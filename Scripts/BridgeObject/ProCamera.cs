@@ -99,6 +99,20 @@ public class ProCamera : BridgeObject {
     public int interpolateColumns;
     public Vector3[] interpolatePositions;
     public Quaternion[] interpolateRotations;
+    public bool animating = false;
+    public bool animationStart = false;
+    public bool animationCancelsDragging = false;
+    public bool animationCanceledByDragging = false;
+    public bool animationCancel = false;
+    public float animationDuration = 0.5f;
+    public float animationDurationMin = 0.1f;
+    public float animationStartTime = -100.0f;
+    public Vector3 animationStartPosition;
+    public Vector3 animationEndPosition;
+    public Vector3 animationPosition;
+    public Quaternion animationStartRotation;
+    public Quaternion animationEndRotation;
+    public Quaternion animationRotation;
 
 
     ////////////////////////////////////////////////////////////////////////
@@ -121,7 +135,17 @@ public class ProCamera : BridgeObject {
 
         }
 
+        if (animating || animationStart) {
+            if (animationCancelsDragging && dragging) {
+                dragging = false;
+            }
+        }
+
+        bool gotInput = false;
+
         if (dragging) {
+
+            gotInput = true;
 
             dragMousePosition = Input.mousePosition;
 
@@ -512,45 +536,59 @@ public class ProCamera : BridgeObject {
 
         if (Input.GetKey("w")) {
             moveDelta.z += moveSpeed * deltaTime;
+            gotInput = true;
         }
         if (Input.GetKey("s")) {
             moveDelta.z -= moveSpeed * deltaTime;
+            gotInput = true;
         }
         if (Input.GetKey("a")) {
             moveDelta.x -= moveSpeed * deltaTime;
+            gotInput = true;
         }
         if (Input.GetKey("d")) {
             moveDelta.x += moveSpeed * deltaTime;
+            gotInput = true;
         }
         if (Input.GetKey("z")) {
             moveDelta.y -= moveSpeed * deltaTime;
+            gotInput = true;
         }
         if (Input.GetKey("x")) {
             moveDelta.y += moveSpeed * deltaTime;
+            gotInput = true;
         }
         if (Input.GetKey("q")) {
             yawDelta -= yawSpeed * deltaTime;
+            gotInput = true;
         }
         if (Input.GetKey("e")) {
             yawDelta += yawSpeed * deltaTime;
+            gotInput = true;
         }
         if (Input.GetKey("r")) {
             pitchDelta -= pitchSpeed * deltaTime;
+            gotInput = true;
         }
         if (Input.GetKey("f")) {
             pitchDelta += pitchSpeed * deltaTime;
+            gotInput = true;
         }
         if (Input.GetKey("i")) {
             orbitYawDelta += orbitYawSpeed * deltaTime;
+            gotInput = true;
         }
         if (Input.GetKey("m")) {
             orbitYawDelta -= orbitYawSpeed * deltaTime;
+            gotInput = true;
         }
         if (Input.GetKey("j")) {
             orbitPitchDelta += orbitPitchSpeed * deltaTime;
+            gotInput = true;
         }
         if (Input.GetKey("k")) {
             orbitPitchDelta -= orbitPitchSpeed * deltaTime;
+            gotInput = true;
         }
 
         if ((yawDelta != 0.0f) || 
@@ -569,12 +607,14 @@ public class ProCamera : BridgeObject {
                 q *= Quaternion.AngleAxis(
                     pitchDelta, 
                     Quaternion.AngleAxis(yaw, Vector3.up) * Vector3.right);
+                gotInput = true;
             }
 
             if (yawDelta != 0.0f) {
                 q *= Quaternion.AngleAxis(
                     yawDelta, 
                     Vector3.up);
+                gotInput = true;
             }
 
             transform.rotation = 
@@ -583,6 +623,8 @@ public class ProCamera : BridgeObject {
         }
 
         if (moveDelta != Vector3.zero) {
+
+            gotInput = true;
 
             Vector3 forward = 
                 transform.rotation * Vector3.forward;
@@ -606,20 +648,10 @@ public class ProCamera : BridgeObject {
             }
         }
 
-
         float scrollX =
             Mathf.Clamp(Input.mouseScrollDelta.x, -mouseScrollDeltaMax, mouseScrollDeltaMax);
         float scrollY = 
             Mathf.Clamp(Input.mouseScrollDelta.y, -mouseScrollDeltaMax, mouseScrollDeltaMax);
-
-#if false
-        if (scrollX != 0.0f) {
-            Debug.Log("ProCamera: Update: scrollX: " + scrollX + " deltaTime: " + Time.deltaTime + " smoothDeltaTime: " + Time.smoothDeltaTime);
-        }
-        if (scrollY != 0.0f) {
-            Debug.Log("ProCamera: Update: scrollY: " + scrollY + " deltaTime: " + Time.deltaTime + " smoothDeltaTime: " + Time.smoothDeltaTime);
-        }
-#endif
 
         wheelZoomDelta += scrollY * wheelZoomSpeed * deltaTime;
         wheelPanDelta += scrollX * wheelPanSpeed * deltaTime;
@@ -643,8 +675,68 @@ public class ProCamera : BridgeObject {
                 transform.position = pos;
             }
 
+            gotInput = true;
+
         }
 
+        if (animating || animationStart) {
+            if (animationCanceledByDragging && gotInput) {
+                Debug.Log("ProCamera: Update: animation canceled by input!");
+                animationCancel = true;
+            }
+        }
+
+        if (animationCancel) {
+            Debug.Log("ProCamera: Update: animation canceled");
+            animationCancel = false;
+            animationStart = false;
+            if (animating) {
+                animating = false;
+            }
+        } else if (animationStart) {
+            Debug.Log("ProCamera: Update: animation started");
+            animationStart = false;
+            animating = true;
+            animationStartTime = Time.time;
+            animationStartPosition = transform.position;
+            animationStartRotation = transform.rotation;
+        }
+
+        if (animating) {
+
+            Debug.Log("ProCamera: Update: animating! animationStart: " + animationStart + " animationCancel: " + animationCancel);
+
+            float t = 
+                (Time.time - animationStartTime) / 
+                animationDuration;
+
+            if (t < 1.0f) {
+
+                animationPosition =
+                    Vector3.Lerp(
+                        animationStartPosition, 
+                        animationEndPosition,
+                        t);
+                animationRotation =
+                    Quaternion.Slerp(
+                        animationStartRotation, 
+                        animationEndRotation,
+                        t);
+
+            } else {
+
+                Debug.Log("ProCamera: Update: animation finished");
+
+                animating = false;
+                animationPosition = animationEndPosition;
+                animationRotation = animationEndRotation;
+
+            }
+
+            transform.position = animationPosition;
+            transform.rotation = animationRotation;
+
+        }
     }
 
     

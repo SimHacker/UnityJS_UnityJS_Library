@@ -509,7 +509,10 @@ public class Tracker : BridgeObject {
 
     public virtual void OnMouseDown()
     {
-        if (((grabber != null) && (grabber != this)) ||
+        isPointerOverUIObject = IsPointerOverUIObject();
+
+        if (isPointerOverUIObject ||
+            ((grabber != null) && (grabber != this)) ||
             !mouseTracking) {
             return;
         }

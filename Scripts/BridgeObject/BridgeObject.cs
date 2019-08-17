@@ -27,6 +27,7 @@ public class BridgeObject : MonoBehaviour {
     public Bridge bridge;
     public JObject interests;
     public bool destroyed = false;
+    public bool destroying = false;
 
 
     ////////////////////////////////////////////////////////////////////////
@@ -39,8 +40,12 @@ public class BridgeObject : MonoBehaviour {
             return;
         }
         
-        //Debug.Log("BridgeObject: OnDestroy: this: " + this);
-        bridge.DestroyObject(this);
+        Debug.Log("BridgeObject: OnDestroy: ==== this: " + this + " destroyed: " + destroyed);
+        if (!destroyed) {
+            destroying = true;
+            Debug.Log("BridgeObject: OnDestroy: not destroyed so setting destroying and calling DestroyObject");
+            bridge.DestroyObject(this);
+        }
     }
     
 

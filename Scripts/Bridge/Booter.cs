@@ -74,6 +74,7 @@ public class Booter: MonoBehaviour {
     public bool bootNow = true;
     public bool bootButtonEnabled = true;
     public int bootMouseButton = 0;
+    public float bootButtonRectSize = 100.0f;
     public Rect bootButtonRect = new Rect(0, 0, 100, 100);
     public bool bootButtonPressed = false;
     public bool bootButtonActivated = false;
@@ -195,6 +196,11 @@ public class Booter: MonoBehaviour {
 
         if (bootButtonEnabled &&
             !bootCanvasShown) {
+
+            bootButtonRect.x = Screen.width - bootButtonRectSize;
+            bootButtonRect.y = Screen.height - bootButtonRectSize;
+            bootButtonRect.width = bootButtonRectSize;
+            bootButtonRect.height = bootButtonRectSize;
 
             if (!bootButtonPressed) {
 
