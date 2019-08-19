@@ -51,83 +51,19 @@ public class DeploymentBuilder : MonoBehaviour {
     // Static Class Variables
 
 
-    private static string deploymentConfigurationsFileName = "Config/DeploymentConfigurations";
-    private static JArray deploymentConfigurations = null;
+    private static string deploymentConfigurationFileName = "Config/DeploymentConfiguration";
+    private static JObject deploymentConfiguration = null;
 
 
     ////////////////////////////////////////////////////////////////////////
     // Static Methods
 
 
-    public static bool GetInDeployment(out string deploymentID, out string deployableApplicationDataPath)
+    public static void ConfigureDeployment(bool build=false)
     {
-        string deploymentsDir = "/Deployments/";
-        string applicationDataPath = Application.dataPath;
-        int deploymentsDirStart = applicationDataPath.IndexOf(deploymentsDir);
-        bool inDeployment = deploymentsDirStart >= 0;
-
-        if (inDeployment) {
-
-            int deploymentNameStart = deploymentsDirStart + deploymentsDir.Length;
-            int deploymentNameEnd = applicationDataPath.IndexOf("/", deploymentNameStart);
-            int deploymentNameLength =
-                (deploymentNameEnd == -1)
-                    ? (applicationDataPath.Length - deploymentNameStart)
-                    : (deploymentNameEnd - deploymentNameStart);
-            deploymentID =
-                applicationDataPath.Substring(
-                    deploymentNameStart, 
-                    deploymentNameLength);
-
-            deployableApplicationDataPath = applicationDataPath.Substring(0, deploymentNameStart) + "/UnityJS/Assets/";
-
-        } else {
-
-            deploymentID = "";
-            deployableApplicationDataPath = applicationDataPath;
-
-        }
-
-        return inDeployment;
-    }
-
-
-    public static JObject FindDeployment(string configurationID)
-    {
-        LoadDeploymentConfigurations();
-
-        if (deploymentConfigurations == null) {
-            Debug.LogError("DeploymentBuilder: FindDeployment: missing deploymentConfigurations!");
-            return null;
-        }
-
-        JObject config = null;
-
-        foreach (JObject deploymentConfiguration in deploymentConfigurations) {
-            string deploymentConfigurationID = (string)deploymentConfiguration["id"];
-            if (deploymentConfigurationID == configurationID) {
-                config = deploymentConfiguration;
-                return config;
-            }
-        }
-
-        Debug.LogError("DeploymentBuilder: FindDeployment: unknown configurationID: " + configurationID);
-
-        return null;
-    }
-
-
-    public static void ConfigureDeployment(string configurationID, bool deploy=false, bool build=false)
-    {
-        string deploymentID;
-        string deployableApplicationDataPath;
-        bool inDeployment = 
-            DeploymentBuilder.GetInDeployment(
-                out deploymentID,
-                out deployableApplicationDataPath);
-
-        JObject config = FindDeployment(configurationID);
+        JObject config = GetDeploymentConfiguration();
         if (config == null) {
+            Debug.LogError("DeploymentBuilder: ConfigureDeployment: Resources/" + deploymentConfigurationFileName + ".txt missing from project!");
             return;
         }
 
@@ -177,7 +113,7 @@ public class DeploymentBuilder : MonoBehaviour {
             bridgeObj.GetComponent<Booter>();
         if (booter != null) {
 
-            Undo.RecordObject(bridgeObj, "Configure Bridge");
+            Undo.RecordObject(bridgeObj, "Configure Booter");
             EditorUtility.SetDirty(booter);
 
             string bootConfigurationsKey = (string)config["bootConfigurationsKey"];
@@ -341,340 +277,6 @@ public class DeploymentBuilder : MonoBehaviour {
         EditorSceneManager.SaveScene(scene);
         AssetDatabase.SaveAssets();
 
-        // Copy files around in the deployable project.
-
-        JArray copyFiles = (JArray)config["copyFiles"];
-        //Debug.Log("DeploymentBuilder: ConfigureDeployment: copyFiles: " + copyFiles);
-
-        if (copyFiles != null) {
-
-            foreach (JArray fromToPaths in copyFiles) {
-
-                string sourcePath = 
-                    Path.GetFullPath(
-                        deployableApplicationDataPath + 
-                        "/" + 
-                        (string)fromToPaths[0]);
-
-                string destPath = 
-                    Path.GetFullPath(
-                        deployableApplicationDataPath + 
-                        "/" + 
-                        (string)fromToPaths[1]);
-
-                CopyTree(sourcePath, destPath, false);
-
-            }
-
-            AssetDatabase.Refresh();
-
-        } // if copyFiles != null
-
-        // Deploy this configuration if deploy is enabled.
-
-        if (deploy) {
-
-            if (deployment == null) {
-                Debug.Log("DeploymentBuilder: ConfigureDeployment: missing deployment! config: " + config.ToString());
-                return;
-            }
-
-            string deploymentsDirectory = (string)config["deploymentsDirectory"];
-            //Debug.Log("DeploymentBuilder: ConfigureDeployment: deploymentsDirectory: " + deploymentsDirectory);
-
-            string rootPath =
-                Path.GetFullPath(
-                    deployableApplicationDataPath + 
-                    "/..");
-
-            string deploymentPath = 
-                Path.GetFullPath(
-                    rootPath + 
-                    deploymentsDirectory + 
-                    deployment);
-
-            //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployment: " + deployment + " deploymentPath: " + deploymentPath);
-
-            // Clean out the deployment only if we're in the deployable project.
-
-            if (!inDeployment) {
-
-#if false
-                if (Directory.Exists(deploymentPath)) {
-
-                    //Debug.Log("DeploymentBuilder: ConfigureDeployment: deleting old directory deploymentPath: " + deploymentPath);
-                    Directory.Delete(deploymentPath, true);
-
-                }
-
-                //Debug.Log("DeploymentBuilder: ConfigureDeployment: Creating new directory deploymentPath: " + deploymentPath);
-                Directory.CreateDirectory(deploymentPath);
-
-#endif
-
-                JArray deployClean = (JArray)config["deployClean"];
-                //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployClean: " + deployClean);
-
-                if (deployClean != null) {
-
-                    foreach (string item in deployClean) {
-
-                        string destPath = deploymentPath + "/" + item;
-                        //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployClean: item: " + item);
-
-                        if (File.Exists(destPath)) {
-
-                            //Debug.Log("DeploymentBuilder: ConfigureDeployment: Cleaning file: " + destPath);
-                            File.Delete(destPath);
-
-                        } else if (Directory.Exists(destPath)) {
-
-                            //Debug.Log("DeploymentBuilder: ConfigureDeployment: Cleaning directory: " + destPath);
-                            Directory.Delete(destPath, true);
-
-                        }
-
-                        string destPathMeta = destPath + ".meta";
-                        //Debug.Log("DeploymentBuilder: ConfigureDeployment: destMetaPath: " + destMetaPath);
-
-                        if (File.Exists(destPathMeta)) {
-
-                            //Debug.Log("DeploymentBuilder: ConfigureDeployment: Cleaning file: " + destPathMeta);
-                            File.Delete(destPathMeta);
-
-                        } else if (Directory.Exists(destPathMeta)) {
-
-                            //Debug.Log("DeploymentBuilder: ConfigureDeployment: Cleaning directory: " + destPathMeta);
-                            Directory.Delete(destPathMeta, true);
-
-                        }
-
-                    }
-
-                }
-
-            }
-
-            // Create directories in the deployment project.
-
-            JArray deployCreateDirectories = (JArray)config["deployCreateDirectories"];
-            //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployCreateDirectories: " + deployCreateDirectories);
-
-            if (deployCreateDirectories != null) {
-
-                foreach (string item in deployCreateDirectories) {
-
-                    string sourcePath;
-                    string destPath;
-
-                    //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployCreateDirectories: item: " + item);
-
-                    sourcePath = 
-                        rootPath +
-                        "/" +
-                        item;
-
-                    destPath = 
-                        deploymentPath + 
-                        "/" + 
-                        item;
-
-                    //Debug.Log("DeploymentBuilder: ConfigureDeployment: Creating directory destPath: " + destPath);
-                    if (!Directory.Exists(destPath)) {
-                        Directory.CreateDirectory(destPath);
-                    }
-
-                    string sourceMetaPath = sourcePath + ".meta";
-                    //Debug.Log("DeploymentBuilder: ConfigureDeployment: sourceMetaPath: " + sourceMetaPath);
-                    //Debug.Log("DeploymentBuilder: ConfigureDeployment: sourceMetaPath exists: " + File.Exists(sourceMetaPath));
-                    string destMetaPath = destPath + ".meta";
-                    //Debug.Log("DeploymentBuilder: ConfigureDeployment: destMetaPath: " + destMetaPath);
-
-                    //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployCreateDirectories: sourceMetaPath: " + sourceMetaPath + " destMetaPath: " + destMetaPath + " source file exists: " + File.Exists(sourceMetaPath));
-
-                    if (File.Exists(sourceMetaPath)) {
-
-                        string sourceMetaPathRelative = RelativeLinkPath(sourceMetaPath, destMetaPath);
-
-                        //Debug.Log("DeploymentBuilder: ConfigureDeployment: Copying directory meta file sourceMetaPath: " + sourceMetaPath + " sourceMetaPathRelative: " + sourceMetaPathRelative + " to destMetaPath: " + destMetaPath);
-
-                        MakeSymbolicLink(sourceMetaPathRelative, destMetaPath);
-                    }
-
-                }
-
-            }
-
-            // Copy files into the deployment project.
-
-            JArray deployCopyFiles = (JArray)config["deployCopyFiles"];
-            //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployCopyFiles: " + deployCopyFiles);
-
-            if (deployCopyFiles != null) {
-
-                foreach (JToken item in deployCopyFiles) {
-
-                    string sourcePath;
-                    string destPath;
-
-                    //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployCopyFiles: item: " + item);
-
-                    string itemString = (string)item;
-                    JArray itemArray = (item is JArray) ? (JArray)item : null;
-
-                    if (itemString != null) {
-
-                        sourcePath = 
-                            rootPath +
-                            "/" + 
-                            itemString;
-
-                        destPath = 
-                            deploymentPath + 
-                            "/" + 
-                            itemString;
-
-                    } else if (itemArray != null) {
-
-                        sourcePath = 
-                            rootPath +
-                            "/" + 
-                            (string)itemArray[0];
-
-                        destPath = 
-                            deploymentPath + 
-                            "/" + 
-                            (string)itemArray[1];
-
-                    } else {
-                        Debug.LogError("DeploymentBuilder: ConfigureDeployment: deployCopyFiles: invalid item: " + item);
-                        return;
-                    }
-
-                    //Debug.Log("DeploymentBuilder: deployCopyFile: sourcePath: " + sourcePath + " destPath: " + destPath);
-                    CopyTree(sourcePath, destPath, true);
-
-                }
-
-            }
-
-            // Symlink files into the deployment project.
-
-            JArray deployLinkFiles = (JArray)config["deployLinkFiles"];
-            //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployLinkFiles: " + deployLinkFiles);
-
-            if (deployLinkFiles != null) {
-
-                foreach (JToken item in deployLinkFiles) {
-
-                    string sourcePath;
-                    string destPath;
-
-                    JArray itemArray = (item is JArray) ? (JArray)item : null;
-                    string itemString = (itemArray == null) ? (string)item : null;
-
-                    //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployLinkFiles: item: " + item.Type + " " + item + " itemString: " + itemString + " itemArray: " + itemArray);
-
-                    if (itemString != null) {
-
-                        sourcePath = 
-                            rootPath +
-                            "/" + 
-                            itemString;
-
-                        destPath =
-                            deploymentPath + 
-                            "/" + 
-                            itemString;
-
-                    } else if (itemArray != null) {
-
-                        sourcePath =
-                            rootPath +
-                            "/" + 
-                            (string)itemArray[0];
-
-                        destPath = 
-                            deploymentPath + 
-                            "/" + 
-                            (string)itemArray[1];
-
-                    } else {
-                        Debug.LogError("DeploymentBuilder: ConfigureDeployment: invalid item: " + item);
-                        return;
-                    }
-
-                    if (Directory.Exists(destPath)) {
-
-                        //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployLinkFiles: deleting existing directoy destPath: " + destPath);
-                        Directory.Delete(destPath, true);
-
-                    } else if (File.Exists(destPath)) {
-
-                        //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployLinkFiles: deleting existing file destPath: " + destPath);
-                        File.Delete(destPath);
-
-                    }
-
-                    if (Directory.Exists(sourcePath) ||
-                        File.Exists(sourcePath))  {
-
-                        string sourcePathRelative = RelativeLinkPath(sourcePath, destPath);
-
-                        string destParentPath = Directory.GetParent(destPath).FullName;
-                        bool destParentDirectoryExists = Directory.Exists(destParentPath);
-
-                        //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployLinkFiles: destPath: " + destPath + " destParentPath: " + destParentPath + " destParentDirectoryExists: " + destParentDirectoryExists);
-
-                        if (!destParentDirectoryExists) {
-
-                            // TODO: Link .meta files in intermediate created directories.
-                            Directory.CreateDirectory(destParentPath);
-
-                        }
-
-                        //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployLinkFiles: linking sourcePath: " + sourcePath + " sourcePathRelative: " + sourcePathRelative + " to destPath " + destPath);
-
-                        MakeSymbolicLink(sourcePathRelative, destPath);
-
-                        string sourceMetaPath = sourcePath + ".meta";
-                        string sourceMetaPathRelative = sourcePathRelative + ".meta";
-                        bool sourceMetaFileExists = File.Exists(sourceMetaPath);
-
-                        //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployLinkFiles: sourceMetaPath: " + sourceMetaPath + " sourceMetaPathRelative: " + sourceMetaPathRelative + " sourceMetaFileExists: " + sourceMetaFileExists);
-
-                        if (sourceMetaFileExists) {
-
-                            string destMetaPath = destPath + ".meta";
-
-                            //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployLinkFiles: copying meta file from sourceMetaPath: " + sourceMetaPath + " sourceMetaPathRelative: " + sourceMetaPathRelative + " to destMetaPath: " + destMetaPath);
-
-                            if (Directory.Exists(destMetaPath)) {
-
-                                //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployLinkFiles: deleting existing meta directoy destMetaPath: " + destMetaPath);
-                                Directory.Delete(destMetaPath, true);
-
-                            } else if (File.Exists(destMetaPath)) {
-
-                                //Debug.Log("DeploymentBuilder: ConfigureDeployment: deployLinkFiles: deleting existing meta file destMetaPath: " + destMetaPath);
-                                File.Delete(destMetaPath);
-
-                            }
-
-                            MakeSymbolicLink(sourceMetaPathRelative, destMetaPath);
-
-                        }
-
-                    } else {
-                        Debug.LogError("DeploymentBuilder: ConfigureDeployment: missing sourcePath: " + sourcePath);
-                    }
-
-                }
-
-            }
-
-        } // if deploy
-
         // Build this configuration if build is enabled.
 
         if (build) {
@@ -705,60 +307,51 @@ public class DeploymentBuilder : MonoBehaviour {
     }
     
 
-    public static void ReloadDeploymentConfigurations()
+    public static JObject GetDeploymentConfiguration()
     {
-        deploymentConfigurations = null;
-        LoadDeploymentConfigurations();
+        LoadDeploymentConfiguration();
+        return deploymentConfiguration;
     }
 
 
-    private static void LoadDeploymentConfigurations()
+    public static void ReloadDeploymentConfiguration()
     {
-        if (deploymentConfigurations != null) {
+        deploymentConfiguration = null;
+        LoadDeploymentConfiguration();
+    }
+
+
+    private static void LoadDeploymentConfiguration()
+    {
+        if (deploymentConfiguration != null) {
             return;
         }
 
-        deploymentConfigurations = new JArray();
-
-        string fileName = "Config/DeploymentConfigurations";
-        UnityEngine.Object[] resources = Resources.LoadAll(fileName, typeof(TextAsset));
-        Debug.Log("DeploymentBuilder: LoadDeploymentConfigurations: Found " + resources.Length + " resources for fileName: " + fileName);
-
-        foreach (TextAsset resource in resources) {
-
-            string text = resource.text;
-            Resources.UnloadAsset(resource);
-
-            if (string.IsNullOrEmpty(text)) {
-                Debug.LogError("DeploymentBuilder: LoadDeploymentConfigurations: Resource is not TextAsset! fileName: " + fileName);
-                continue;
-            }
-
-            JToken data = JToken.Parse(text);
-            if (data == null) {
-                Debug.LogError("DeploymentBuilder: LoadDeploymentConfigurations: Error parsing fileName: " + fileName + " text:\n" + text);
-                continue;
-            }
-
-            JArray configurations = (JArray)data;
-            if (configurations == null) {
-                Debug.LogError("DeploymentBuilder: LoadDeploymentConfigurations: Configurations should be an array! text:\n" + text);
-                continue;
-            }
-
-            foreach (JToken token in data) {
-                deploymentConfigurations.Add(token);
-            }
-
+        TextAsset resource = Resources.Load<TextAsset>(deploymentConfigurationFileName);
+        if (resource == null) {
+            Debug.LogError("DeploymentBuilder: LoadDeploymentConfigurations: Resource is not TextAsset!");
+            return;
         }
 
-    }
+        string text = resource.text;
+        Resources.UnloadAsset(resource);
+        if (string.IsNullOrEmpty(text)) {
+            Debug.LogError("DeploymentBuilder: LoadDeploymentConfigurations: Text resource is empty!");
+            return;
+        }
 
+        JToken data = JToken.Parse(text);
+        if (data == null) {
+            Debug.LogError("DeploymentBuilder: LoadDeploymentConfigurations: Error parsing JSON text:\n" + text);
+            return;
+        }
 
-    public static JArray GetDeploymentConfigurations()
-    {
-        LoadDeploymentConfigurations();
-        return deploymentConfigurations;
+        deploymentConfiguration = (JObject)data;
+        if (deploymentConfiguration == null) {
+            Debug.LogError("DeploymentBuilder: LoadDeploymentConfigurations: JSON should be an object! text:\n" + text);
+            return;
+        }
+
     }
 
 
@@ -781,191 +374,6 @@ public class DeploymentBuilder : MonoBehaviour {
         Resources.UnloadAsset(textFile);
 
         return result;
-    }
-
-
-    public static void CopyTree(string sourcePath, string destPath, bool copyMeta)
-    {
-        bool sourceDirectoryExists = Directory.Exists(sourcePath);
-        bool sourceFileExists = File.Exists(sourcePath);
-
-        //Debug.Log("DeploymentBuilder: CopyTree: sourcePath: " + sourcePath + " destPath: " + destPath + " sourceDirectoryExists: " + sourceDirectoryExists + " sourceFileExists: " + sourceFileExists);
-
-        if (!sourceDirectoryExists && !sourceFileExists) {
-            Debug.LogError("DeploymentBuilder: CopyTree: missing file or directory sourcePath: " + sourcePath);
-            return;
-        }
-
-        bool destDirectoryExists = Directory.Exists(destPath);
-        bool destFileExists = File.Exists(destPath);
-
-        //Debug.Log("DeploymentBuilder: CopyTree: destDirectoryExists: " + destDirectoryExists + " destFileExists: " + destFileExists);
-
-        if (destDirectoryExists) {
-            //Debug.Log("DeploymentBuilder: CopyTree: deleting old existing directory destPath: " + destPath);
-            Directory.Delete(destPath, true);
-        }
-
-        if (destFileExists) {
-            //Debug.Log("DeploymentBuilder: CopyTree: deleting old existing file destPath: " + destPath);
-            File.Delete(destPath);
-        }
-
-        string destParentPath = Path.GetDirectoryName(destPath);
-        bool destParentDirectoryExists = Directory.Exists(destParentPath);
-
-        //Debug.Log("DeploymentBuilder: CopyTree: destParentPath: " + destParentPath + " destParentDirectoryExists: " + destParentDirectoryExists);
-
-        if (!destParentDirectoryExists) {
-
-            //Debug.Log("DeploymentBuilder: CopyTree: creating new destParentPath: " + destParentPath);
-
-            // TODO: Copy .meta files in intermediate created directories.
-            Directory.CreateDirectory(destParentPath);
-
-        }
-
-        //Debug.Log("DeploymentBuilder: CopyTree: CopyFileOrDirectory sourcePath: " + sourcePath + " destPath: " + destPath);
-        FileUtil.CopyFileOrDirectory(sourcePath, destPath);
-
-        if (copyMeta) {
-
-            string sourceMetaPath = sourcePath + ".meta";
-            bool sourceMetaFileExists = File.Exists(sourceMetaPath);
-
-            //Debug.Log("DeploymentBuilder: CopyTree: sourceMetaPath: " + sourceMetaPath + " sourceMetaFileExists: " + sourceMetaFileExists);
-
-            if (sourceMetaFileExists) {
-
-                string destMetaPath = destPath + ".meta";
-
-                //Debug.Log("DeploymentBuilder: CopyTree: copying meta file from sourceMetaPath: " + sourceMetaPath + " to destMetaPath: " + destMetaPath);
-
-                if (Directory.Exists(destMetaPath)) {
-
-                    //Debug.Log("DeploymentBuilder: CopyTree: deleting existing meta directoy destMetaPath: " + destMetaPath);
-                    Directory.Delete(destMetaPath, true);
-
-                } else if (File.Exists(destMetaPath)) {
-
-                    //Debug.Log("DeploymentBuilder: CopyTree: deleting existing meta file destMetaPath: " + destMetaPath);
-                    File.Delete(destMetaPath);
-
-                }
-
-#if true
-                FileUtil.CopyFileOrDirectory(sourceMetaPath, destMetaPath);
-#else
-
-                string sourceMetaPathRelative = RelativeLinkPath(sourceMetaPath, destMetaPath);
-
-                //Debug.Log("DeploymentBuilder: CopyTree: Linking directory meta file sourceMetaPath: " + sourceMetaPath + " sourceMetaPathRelative: " + sourceMetaPathRelative + " to destMetaPath: " + destMetaPath);
-
-                MakeSymbolicLink(sourceMetaPathRelative, destMetaPath);
-#endif
-
-            }
-
-        }
-
-    }
-
-
-    public static string RelativeLinkPath(string sourcePath, string destPath)
-    {
-        char[] separators = new char[] {
-            Path.DirectorySeparatorChar,
-            Path.AltDirectorySeparatorChar
-        };
-
-        string sourceDirPath =
-            Directory.Exists(sourcePath)
-                ? sourcePath
-                : Path.GetDirectoryName(sourcePath);
-        string[] sourcePathDirs = 
-            sourceDirPath.Split(separators); // , StringSplitOptions.RemoveEmptyEntries
-
-        string destDirPath =
-            Directory.Exists(destPath)
-                ? destPath
-                : Path.GetDirectoryName(destPath);
-        string[] destPathDirs = 
-            destDirPath.Split(separators); // , StringSplitOptions.RemoveEmptyEntries
-
-        List<string> sameDirs = new List<string>();
-        int minDirs = Math.Min(sourcePathDirs.Length, destPathDirs.Length);
-        int i;
-        for (i = 0; i < minDirs; i++) {
-            if (sourcePathDirs[i] != destPathDirs[i]) {
-                break;
-            }
-            sameDirs.Add(sourcePathDirs[i]);
-        }
-
-        string commonPath =
-            String.Join("/", sameDirs.ToArray());
-
-        string relPath = "";
-        int ups = destPathDirs.Length - i;
-        for (int up = 0; up < ups; up++) {
-            relPath += "../";
-        }
-
-        int downs = sourcePathDirs.Length;
-        for (; i < downs; i++) {
-            relPath += sourcePathDirs[i];
-            if (i != (downs - 1)) {
-                relPath += "/";
-            }
-        }
-
-        if (!Directory.Exists(sourcePath)) {
-            string[] components = sourcePath.Split(separators);
-            if (components.Length > 0) {
-                relPath += "/" + components[components.Length - 1];
-            }
-        }
-
-        return relPath;
-    }
-
-
-    public static void MakeSymbolicLink(string sourcePath, string destPath)
-    {
-        //Debug.Log("DeploymentBuilder: MakeSymbolicLink: platform: " + Application.platform + " sourcePath: " + sourcePath + " destPath: " + destPath);
-
-        var process = new System.Diagnostics.Process();
-
-        if (Application.platform == RuntimePlatform.OSXEditor) {
-            process.StartInfo.FileName = "ln";
-            process.StartInfo.Arguments = 
-                "-s " +
-                QuoteShellPathParam(sourcePath) + " " +
-                QuoteShellPathParam(destPath);
-        } else {
-            process.StartInfo.FileName = "mklink";
-            process.StartInfo.Arguments =
-                (Directory.Exists(destPath) ? "/d " : "") +
-                QuoteShellPathParam(sourcePath) + " " +
-                QuoteShellPathParam(destPath);
-        }
-
-        //Debug.Log("DeploymentBuilder: MakeSymbolicLink: FileName: " + process.StartInfo.FileName + " Arguments: " + process.StartInfo.Arguments);
-
-        process.StartInfo.UseShellExecute = false;
-        process.StartInfo.CreateNoWindow = true;
-        process.Start();
-        process.WaitForExit();
-        process.Dispose();
-    }
-
-
-    static string QuoteShellPathParam(string pathParam)
-    {
-        return 
-            ("\"" +
-             pathParam.Replace("\"", "\\\"") +
-             "\"");
     }
 
 

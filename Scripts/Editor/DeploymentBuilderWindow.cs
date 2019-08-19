@@ -117,25 +117,6 @@ public class DeploymentBuilderWindow : EditorWindow {
     private void OnGUI()
     {
         string applicationDataPath = Application.dataPath;
-        JObject currentDeploymentConfiguration = null;
-        JObject selectedDeploymentConfiguration = null;
-
-        string deploymentID;
-        string deployableApplicationDataPath;
-        bool inDeployment = 
-            DeploymentBuilder.GetInDeployment(
-                out deploymentID,
-                out deployableApplicationDataPath);
-
-        string selectedDeploymentConfigurationID =
-            EditorPrefs.GetString(
-                "Deployment_selectedDeploymentConfigurationID", 
-                "");
-
-        string currentDeploymentConfigurationID =
-            EditorPrefs.GetString(
-                "Deployment_currentDeploymentConfigurationID", 
-                "");
 
         GUILayout.Label(
             "UnityJS Deployment Builder Window");
@@ -143,198 +124,64 @@ public class DeploymentBuilderWindow : EditorWindow {
         GUILayout.Space(5);
 
         if (GUILayout.Button(
-            "\nReload Deployment Configurations\n")) {
+            "\nReload Deployment Configuration:\nResources/Config/DeploymentConfiguration.txt\n")) {
 
-            DeploymentBuilder.ReloadDeploymentConfigurations();
-
-        }
-
-        JArray deploymentConfigurations = 
-            DeploymentBuilder.GetDeploymentConfigurations();
-
-        GUILayout.Space(5);
-
-        if (inDeployment) {
-
-            selectedDeploymentConfigurationID = currentDeploymentConfigurationID = 
-                deploymentID;
+            DeploymentBuilder.ReloadDeploymentConfiguration();
 
         }
 
-        foreach (JObject deploymentConfiguration in deploymentConfigurations) {
-            string id = 
-                (string)deploymentConfiguration["id"];
-            if (id == currentDeploymentConfigurationID) {
-                currentDeploymentConfiguration = deploymentConfiguration;
-                selectedDeploymentConfiguration = currentDeploymentConfiguration;
-                break;
-            }
-        }
+        JObject deploymentConfiguration = 
+            DeploymentBuilder.GetDeploymentConfiguration();
 
-        if (inDeployment) {
-            
+        if (deploymentConfiguration == null) {
+
+            GUILayout.Space(5);
+
             GUILayout.Label(
-                "This is the deployment project: " + currentDeploymentConfigurationID);
+                "The deployment configuration in Resources/Config/DeploymentConfiguration.txt was not found!");
+            return;
+
+        }
+
+        string[] scenes = deploymentConfiguration["scenes"].ToObject<string[]>();
+        string scenePath = (scenes.Length > 0) ? scenes[0] : "";
+
+        UnityEngine.SceneManagement.Scene activeScene = EditorSceneManager.GetActiveScene();
+
+        if ((activeScene == null) ||
+            (activeScene.path != scenePath)) {
 
             GUILayout.Space(5);
 
-            if (currentDeploymentConfiguration == null) {
+            if (GUILayout.Button(
+                "\nLoad Scene:\n" +
+                scenePath +
+                "\n")) {
 
-                GUILayout.Label(
-                    "A deployment with that id is missing from the DeploymentConfigurations file!");
+                UnityEngine.SceneManagement.Scene scene = 
+                    EditorSceneManager.OpenScene(scenePath);
 
-            } else {
-
-                string[] scenes = currentDeploymentConfiguration["scenes"].ToObject<string[]>();
-                string scenePath = (scenes.Length > 0) ? scenes[0] : "";
-
-                UnityEngine.SceneManagement.Scene activeScene = EditorSceneManager.GetActiveScene();
-
-                if ((activeScene == null) ||
-                    (activeScene.path != scenePath)) {
-
-                    if (GUILayout.Button(
-                        "\nLoad Scene:\n" +
-                        scenePath +
-                        "\n")) {
-
-                        UnityEngine.SceneManagement.Scene scene = 
-                            EditorSceneManager.OpenScene(scenePath);
-                        
-                        Debug.Log("Opened scenePath: " + scenePath + " scene: " + scene);
-
-                    }
-                        
-                } else {
-
-                    if (GUILayout.Button(
-                        "\nBuild Scene:\n" +
-                        scenePath +
-                        "\n")) {
-
-                        DeploymentBuilder.ConfigureDeployment(currentDeploymentConfigurationID, false, true);
-
-                    }
-
-                }
+                Debug.Log("Opened scenePath: " + scenePath + " scene: " + scene);
 
             }
-
-            GUILayout.Space(5);
 
         } else {
 
-            GUILayout.Label(
-                "This is the deployable project, not a deployment project.");
+            GUILayout.Space(5);
 
-            GUILayout.Label(
-                "Select a deployment configuration:");
-
-            scrollPos1 = 
-                EditorGUILayout.BeginScrollView(
-                    scrollPos1, 
-                    GUILayout.ExpandHeight(true),
-                    GUILayout.MaxHeight(maxScrollViewHeight1));
-
-            foreach (JObject deploymentConfiguration in deploymentConfigurations) {
-                string id = 
-                    (string)deploymentConfiguration["id"];
-                bool current = 
-                    id == currentDeploymentConfigurationID;
-                bool selected = 
-                    id == selectedDeploymentConfigurationID;
-                string title = 
-                    "    " + 
-                    id + 
-                    ": " +
-                    (string)deploymentConfiguration["title"] +
-                    (current
-                        ? " (current)"
-                        : "");
-
-                if (selected) {
-                    selectedDeploymentConfiguration = deploymentConfiguration;
-                }
-
-                if (GUILayout.Button(
-                    title, 
-                    current
-                        ? (selected
-                            ? listFontStyleCurrentSelected
-                            : listFontStyleCurrent)
-                        : (selected
-                            ? listFontStyleSelected
-                            : listFontStyle))) {
-
-                    EditorPrefs.SetString("Deployment_selectedDeploymentConfigurationID", id);
-
-                }
-
+            if (GUILayout.Button(
+                "\nApply Deployment Configuration\n")) {
+                DeploymentBuilder.ConfigureDeployment(false);
             }
 
-            EditorGUILayout.EndScrollView();
-
             GUILayout.Space(5);
 
-        }
+            if (GUILayout.Button(
+                "\nBuild Scene:\n" +
+                scenePath +
+                "\n")) {
 
-        if (selectedDeploymentConfiguration == null) {
-
-            GUILayout.Label(
-                "Select a deployment configuration to see its properties.");
-
-        } else {
-
-            string title = 
-                (string)selectedDeploymentConfiguration["title"];
-            string applicationName = 
-                (string)selectedDeploymentConfiguration["applicationName"];
-            string location =
-                (string)selectedDeploymentConfiguration["location"];
-            string buildTarget =
-                (string)selectedDeploymentConfiguration["buildTarget"];
-            string buildTargetGroup =
-                (string)selectedDeploymentConfiguration["buildTargetGroup"];
-            string virtualRealitySupported =
-                (string)selectedDeploymentConfiguration["virtualRealitySupported"];
-
-            GUILayout.Label(
-                "Selected Deployment Configuration" +
-                ((selectedDeploymentConfiguration == currentDeploymentConfiguration)
-                    ? " (current):\n"
-                    : " (not current):\n") +
-                "    ID: " + selectedDeploymentConfigurationID + "\n" +
-                "    Title: "  + title + "\n" +
-                "    Application Name: "  + applicationName + "\n" +
-                "    Location: "  + location + "\n" +
-                "    Build Target: "  + buildTarget + "\n" +
-                "    Build Target Group: "  + buildTargetGroup + "\n" +
-                "    Virtual Reality Supported: "  + virtualRealitySupported + "\n" +
-                "");
-
-            GUILayout.Space(5);
-
-            if (selectedDeploymentConfiguration != currentDeploymentConfiguration) {
-
-                if (GUILayout.Button(
-                    "\nChange current deployment configuration to:\n\n" +
-                    "ID: " + selectedDeploymentConfigurationID +
-                    "\n" +
-                    "Title: " + (string)selectedDeploymentConfiguration["title"] +
-                    "\n")) {
-                    EditorPrefs.SetString("Deployment_currentDeploymentConfigurationID", selectedDeploymentConfigurationID);
-                }
-
-                GUILayout.Space(5);
-
-            } else {
-
-                if (GUILayout.Button(
-                    "\nConfigure and Deploy Current Deployment Configuration\n")) {
-                    DeploymentBuilder.ConfigureDeployment(currentDeploymentConfigurationID, true, false);
-                }
-
-                GUILayout.Space(5);
+                DeploymentBuilder.ConfigureDeployment(true);
 
             }
 
@@ -342,10 +189,7 @@ public class DeploymentBuilderWindow : EditorWindow {
 
         GUILayout.Space(5);
 
-        GUILayout.Label(
-            (currentDeploymentConfiguration == null)
-                ? "All Deployment Configurations:"
-                : "Deployment Configuration for " + currentDeploymentConfigurationID + ":");
+        GUILayout.Label("JSON Deployment Configuration:");
 
         scrollPos2 = 
             EditorGUILayout.BeginScrollView(
@@ -354,15 +198,9 @@ public class DeploymentBuilderWindow : EditorWindow {
                 GUILayout.MaxHeight(maxScrollViewHeight2));
 
         string json = 
-            (currentDeploymentConfiguration != null)
-                ? JsonConvert.SerializeObject(
-                    currentDeploymentConfiguration, 
-                    Formatting.Indented)
-                : ((deploymentConfigurations != null)
-                    ? JsonConvert.SerializeObject(
-                        deploymentConfigurations, 
-                        Formatting.Indented)
-                    : "undefined");
+            JsonConvert.SerializeObject(
+                deploymentConfiguration, 
+                Formatting.Indented);
 
         GUILayout.Label(
             json);
