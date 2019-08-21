@@ -681,20 +681,20 @@ public class ProCamera : BridgeObject {
 
         if (animating || animationStart) {
             if (animationCanceledByDragging && gotInput) {
-                Debug.Log("ProCamera: Update: animation canceled by input!");
+                //Debug.Log("ProCamera: Update: animation canceled by input!");
                 animationCancel = true;
             }
         }
 
         if (animationCancel) {
-            Debug.Log("ProCamera: Update: animation canceled");
+            //Debug.Log("ProCamera: Update: animation canceled");
             animationCancel = false;
             animationStart = false;
             if (animating) {
                 animating = false;
             }
         } else if (animationStart) {
-            Debug.Log("ProCamera: Update: animation started");
+            //Debug.Log("ProCamera: Update: animation started");
             animationStart = false;
             animating = true;
             animationStartTime = Time.time;
@@ -704,7 +704,7 @@ public class ProCamera : BridgeObject {
 
         if (animating) {
 
-            Debug.Log("ProCamera: Update: animating! animationStart: " + animationStart + " animationCancel: " + animationCancel);
+            //Debug.Log("ProCamera: Update: animating! animationStart: " + animationStart + " animationCancel: " + animationCancel);
 
             float t = 
                 (Time.time - animationStartTime) / 
@@ -725,7 +725,7 @@ public class ProCamera : BridgeObject {
 
             } else {
 
-                Debug.Log("ProCamera: Update: animation finished");
+                //Debug.Log("ProCamera: Update: animation finished");
 
                 animating = false;
                 animationPosition = animationEndPosition;
