@@ -43,11 +43,9 @@ namespace UnityJS {
 public class UnityJSPlugin : MonoBehaviour {
 
     // This is an efficient, simplified direct alternative to UnitySendMessage, which is extremely slow.
-#if UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX || UNITY_IOS || UNITY_ANDROID
 	[UnmanagedFunctionPointer(CallingConvention.Cdecl)] // Enables getting a C callable function pointer.
     private delegate void UnitySendMessageDelegate(string target, string method, string message);
     static UnitySendMessageDelegate unitySendMessageDelegate;
-#endif
 
     static IntPtr renderEventFunc;
     static Dictionary<string, UnityJSPlugin> plugins = new Dictionary<string, UnityJSPlugin>();
@@ -240,6 +238,7 @@ public class UnityJSPlugin : MonoBehaviour {
         pluginID =
             _CUnityJSPlugin_GetPluginID(plugin);
 
+#elif UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
 
         // TODO
 
@@ -828,6 +827,7 @@ public class UnityJSPlugin : MonoBehaviour {
         }
 
         plugin.Call("FlushCaches");
+
 #endif
 
     }
