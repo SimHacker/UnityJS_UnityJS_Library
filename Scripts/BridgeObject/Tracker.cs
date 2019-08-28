@@ -40,31 +40,12 @@ public class Tracker : BridgeObject {
     public float mouseDownTime = 0.0f;
     public bool mouseDownChanged = false;
     public bool ignoringMouseClick = false;
-    public bool isPointerOverUIObject = false;
     public bool mouseTrackingPosition = true;
     public bool mouseTrackingPositionHover = false;
     public float mouseTrackingPositionHoverDelay = 0.1f;
     public float mouseTrackingPositionDriftDelay = 0.1f;
     public bool mouseTrackingPositionHovering = false;
     public float mouseTrackingPositionDriftTime = -1.0f;
-    public Vector2 screenSize = Vector2.zero;
-    public Vector3 mousePosition = Vector3.zero;
-    public Vector3 mousePositionLast = Vector3.zero;
-    public bool mousePositionChanged = false;
-    public Vector2 screenPosition = Vector2.zero;
-    public Vector3 mousePositionToCameraOffset;
-    public bool mouseTrackingRaycast = true;
-    public float mouseRayMaxDistance = Mathf.Infinity;
-    public int mouseRayLayerMask = Physics.DefaultRaycastLayers;
-    public QueryTriggerInteraction mouseRayQueryTriggerInteraction = QueryTriggerInteraction.UseGlobal;
-    public Ray mouseRay;
-    public bool mouseRaycastResult = false;
-    public RaycastHit mouseRaycastHit;
-    public Quaternion mouseRaycastHitPointFaceCameraRotation;
-    public BridgeObject mouseRaycastHitBridgeObject;
-    public string mouseRaycastHitBridgeObjectID;
-    public BridgeObject mouseRaycastHitColliderBridgeObject;
-    public string mouseRaycastHitColliderBridgeObjectID;
     public bool dragTracking = false;
     public bool dragging = false;
     public bool draggingSetsIsKinematic = true;
@@ -83,45 +64,43 @@ public class Tracker : BridgeObject {
     public float collisionEnteredTime = 0.0f;
     public bool collisionEnteredChanged = false;
     public Collision collision;
-    public bool shiftKey = false;
-    public bool controlKey = false;
-    public bool altKey = false;
 
+    public static int keyboardFrameCount = -1;
+    public static bool shiftKey = false;
+    public static bool controlKey = false;
+    public static bool altKey = false;
+    public static int pointerFrameCount = -1;
+    public static Vector2 screenSize = Vector2.zero;
+    public static Vector3 mousePosition = Vector3.zero;
+    public static Vector3 mousePositionLast = Vector3.zero;
+    public static bool mousePositionChanged = false;
+    public static Vector2 screenPosition = Vector2.zero;
+    public static bool isPointerOverUIObject = false;
+    public static float mouseRayMaxDistance = Mathf.Infinity;
+    public static int mouseRayLayerMask = Physics.DefaultRaycastLayers;
+    public static QueryTriggerInteraction mouseRayQueryTriggerInteraction = QueryTriggerInteraction.UseGlobal;
+    public static Ray mouseRay;
+    public static bool mouseRaycastResult = false;
+    public static RaycastHit mouseRaycastHit;
+    public static Quaternion mouseRaycastHitPointFaceCameraRotation;
+    public static BridgeObject mouseRaycastHitBridgeObject;
+    public static string mouseRaycastHitBridgeObjectID;
+    public static BridgeObject mouseRaycastHitColliderBridgeObject;
+    public static string mouseRaycastHitColliderBridgeObjectID;
+    
 
     ////////////////////////////////////////////////////////////////////////
-    // Instance Methods
+    // Class Methods
 
 
-     public bool IsPointerOverUIObject()
-     {
-         if (!EventSystem.current) {
-             return false;
-         }
-
-         PointerEventData eventDataCurrentPosition = new PointerEventData(EventSystem.current);
-         eventDataCurrentPosition.position = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
-         List<RaycastResult> results = new List<RaycastResult>();
-         EventSystem.current.RaycastAll(eventDataCurrentPosition, results);
-#if false
-         foreach (RaycastResult result in results) {
-             Debug.Log("Tracker: IsPointerOverUIObject: " + result);
-         }
-#endif
-         return results.Count > 0;
-     }
-
-
-    public Vector3 NearestPointOnLine(Vector3 linePnt, Vector3 lineDir, Vector3 pnt)
+    public static void TrackKeyboard()
     {
-        //lineDir.Normalize(); // This needs to be a unit vector.
-        var v = pnt - linePnt;
-        var d = Vector3.Dot(v, lineDir);
-        return linePnt + lineDir * d;
-    }
+        if (keyboardFrameCount == Time.frameCount) {
+            return;
+        }
 
+        keyboardFrameCount = Time.frameCount;
 
-    public virtual void TrackKeyModifiers()
-    {
         shiftKey = 
             Input.GetKey(KeyCode.LeftShift) ||
             Input.GetKey(KeyCode.RightShift);
@@ -136,20 +115,19 @@ public class Tracker : BridgeObject {
     }
 
 
-    public virtual void TrackMousePosition()
+    public static void TrackPointer()
     {
+        if ((!EventSystem.current) ||
+            (pointerFrameCount == Time.frameCount)) {
+            return;
+        }
+
         mouseRaycastHitBridgeObject = null;
         mouseRaycastHitBridgeObjectID = null;
         mouseRaycastHitColliderBridgeObject = null;
         mouseRaycastHitColliderBridgeObjectID = null;
 
-        TrackKeyModifiers();
-
-        isPointerOverUIObject = IsPointerOverUIObject();
-
-        if (!mouseTrackingPosition) {
-            return;
-        }
+        pointerFrameCount = Time.frameCount;
 
         mousePosition = Input.mousePosition;
         mousePositionChanged = mousePosition != mousePositionLast;
@@ -162,6 +140,116 @@ public class Tracker : BridgeObject {
             new Vector2(
                 mousePosition.x - (screenSize.x * 0.5f),
                 mousePosition.y - (screenSize.y * 0.5f));
+
+        PointerEventData eventDataCurrentPosition = new PointerEventData(EventSystem.current);
+        eventDataCurrentPosition.position = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
+        List<RaycastResult> results = new List<RaycastResult>();
+        EventSystem.current.RaycastAll(eventDataCurrentPosition, results);
+
+#if false
+        foreach (RaycastResult result in results) {
+            Debug.Log("Tracker: TrackPointer: RaycastAll result: " + result + " " + result.gameObject);
+        }
+#endif
+
+        isPointerOverUIObject = results.Count > 0;
+
+        mouseRay =
+            Camera.main.ScreenPointToRay(
+                mousePosition);
+
+        mouseRaycastResult =
+            Physics.Raycast(
+                mouseRay, 
+                out mouseRaycastHit, 
+                mouseRayMaxDistance, 
+                mouseRayLayerMask, 
+                mouseRayQueryTriggerInteraction);
+
+        //Debug.Log("Tracker: TrackMousePosition: mouseRaycastResult: " + mouseRaycastResult + " mouseRaycastHitPoint: " + mouseRaycastHit.point.x + " " + mouseRaycastHit.point.y + " " + mouseRaycastHit.point.z);
+
+        if (!mouseRaycastResult) {
+
+        } else {
+
+            Vector3 cameraPosition = Camera.main.transform.position;
+            Vector3 offset = cameraPosition - mouseRaycastHit.point;
+            offset.y = 0.0f;
+            float direction = 
+                (offset == Vector3.zero)
+                    ? 0.0f
+                    : (180.0f + (Mathf.Atan2(offset.x, offset.z) * Mathf.Rad2Deg));
+            mouseRaycastHitPointFaceCameraRotation =
+                Quaternion.Euler(0.0f, direction, 0.0f);
+
+            mouseRaycastHitBridgeObject = null;
+            Transform xform = mouseRaycastHit.transform;
+            while (xform != null) {
+
+                mouseRaycastHitBridgeObject = xform.gameObject.GetComponent<BridgeObject>();
+
+                //Debug.Log("Tracker: xform: " + xform + " mouseRaycastHitBridgeObject: " + mouseRaycastHitBridgeObject);
+
+                if (mouseRaycastHitBridgeObject != null) {
+                    break;
+                }
+
+                xform = xform.parent;
+
+            }
+
+            mouseRaycastHitBridgeObjectID =
+                (mouseRaycastHitBridgeObject == null)
+                    ? null
+                    : mouseRaycastHitBridgeObject.id;
+
+            mouseRaycastHitColliderBridgeObject = null;
+            xform = mouseRaycastHit.collider.transform;
+            while (xform != null) {
+
+                mouseRaycastHitColliderBridgeObject = xform.gameObject.GetComponent<BridgeObject>();
+
+                if (mouseRaycastHitColliderBridgeObject != null) {
+                    break;
+                }
+
+                xform = xform.parent;
+
+            }
+
+            mouseRaycastHitColliderBridgeObjectID =
+                (mouseRaycastHitColliderBridgeObject == null)
+                    ? null
+                    : mouseRaycastHitColliderBridgeObject.id;
+
+            //Debug.Log("Tracker: TrackMousePosition: mouseRaycastHitBridgeObjectID: " + mouseRaycastHitBridgeObjectID + " mouseRaycastHitBridgeObject: " + mouseRaycastHitBridgeObject + " mouseRaycastHitColliderBridgeObject: " + mouseRaycastHitColliderBridgeObject + " mouseRaycastHitColliderBridgeObjectID: " + mouseRaycastHitColliderBridgeObject + " xform: " + xform);
+
+        }
+
+    }
+
+
+    public static Vector3 NearestPointOnLine(Vector3 linePnt, Vector3 lineDir, Vector3 pnt)
+    {
+        //lineDir.Normalize(); // This needs to be a unit vector.
+        var v = pnt - linePnt;
+        var d = Vector3.Dot(v, lineDir);
+        return linePnt + lineDir * d;
+    }
+
+
+    ////////////////////////////////////////////////////////////////////////
+    // Instance Methods
+
+
+    public virtual void TrackMousePosition()
+    {
+        TrackKeyboard();
+        TrackPointer();
+
+        if (!mouseTrackingPosition) {
+            return;
+        }
 
         if (mouseTrackingPositionHover) {
 
@@ -190,78 +278,6 @@ public class Tracker : BridgeObject {
 
         if (Camera.main == null) {
             return;
-        }
-
-        mouseRay =
-            Camera.main.ScreenPointToRay(
-                mousePosition);
-
-        if (!mouseTrackingRaycast) {
-
-            mouseRaycastResult = false;
-
-        } else {
-
-            mouseRaycastResult =
-                Physics.Raycast(
-                    mouseRay, 
-                    out mouseRaycastHit, 
-                    mouseRayMaxDistance, 
-                    mouseRayLayerMask, 
-                    mouseRayQueryTriggerInteraction);
-
-            //Debug.Log("Tracker: TrackMousePosition: mouseRaycastResult: " + mouseRaycastResult + " mouseRaycastHitPoint: " + mouseRaycastHit.point.x + " " + mouseRaycastHit.point.y + " " + mouseRaycastHit.point.z);
-
-            if (!mouseRaycastResult) {
-
-            } else {
-
-                Vector3 cameraPosition = Camera.main.transform.position;
-                Vector3 offset = cameraPosition - mouseRaycastHit.point;
-                offset.y = 0.0f;
-                float direction = 
-                    (offset == Vector3.zero)
-                        ? 0.0f
-                        : (180.0f + (Mathf.Atan2(offset.x, offset.z) * Mathf.Rad2Deg));
-                mouseRaycastHitPointFaceCameraRotation =
-                    Quaternion.Euler(0.0f, direction, 0.0f);
-
-                mouseRaycastHitBridgeObject = null;
-                Transform xform = mouseRaycastHit.transform;
-                while (xform != null) {
-                    mouseRaycastHitBridgeObject = xform.gameObject.GetComponent<BridgeObject>();
-                    if (mouseRaycastHitBridgeObject != null) {
-                        break;
-                    }
-
-                    xform = xform.parent;
-                }
-
-                mouseRaycastHitBridgeObjectID =
-                    (mouseRaycastHitBridgeObject == null)
-                        ? null
-                        : mouseRaycastHitBridgeObject.id;
-
-                mouseRaycastHitColliderBridgeObject = null;
-                xform = mouseRaycastHit.collider.transform;
-                while (xform != null) {
-                    mouseRaycastHitColliderBridgeObject = xform.gameObject.GetComponent<BridgeObject>();
-                    if (mouseRaycastHitColliderBridgeObject != null) {
-                        break;
-                    }
-
-                    xform = xform.parent;
-                }
-
-                mouseRaycastHitColliderBridgeObjectID =
-                    (mouseRaycastHitColliderBridgeObject == null)
-                        ? null
-                        : mouseRaycastHitColliderBridgeObject.id;
-
-            }
-
-            //Debug.Log("Tracker: TrackMousePosition: cameraPosition: " + cameraPosition.x + " " + cameraPosition.y + " " + cameraPosition.z + " point: " + mouseRaycastHit.point.x + " " + mouseRaycastHit.point.y + " " + mouseRaycastHit.point.z + " offset: " + offset.x + " " + offset.y + " " + offset.z + " direction: " + direction);
-
         }
 
         if (dragging) {
@@ -509,7 +525,7 @@ public class Tracker : BridgeObject {
 
     public virtual void OnMouseDown()
     {
-        isPointerOverUIObject = IsPointerOverUIObject();
+        TrackPointer();
 
         if (isPointerOverUIObject ||
             ((grabber != null) && (grabber != this)) ||

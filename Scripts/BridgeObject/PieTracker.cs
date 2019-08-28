@@ -51,7 +51,7 @@ public class PieTracker : Tracker {
         set {
             _pie = value;
             pieChanged = true;
-            //Debug.Log("PieTracker: set pie: " + pie);
+            //Debug.Log("PieTracker: set pie: " + value);
         }
     }
 
@@ -323,7 +323,8 @@ public class PieTracker : Tracker {
 
         if (Input.GetMouseButtonDown(0)) {
 
-            isPointerOverUIObject = IsPointerOverUIObject();
+            TrackKeyboard();
+            TrackPointer();
 
             //Debug.Log("PieTracker: TrackMouseButton: Down: isPointerOverUIObject: "+ isPointerOverUIObject);
 
