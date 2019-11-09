@@ -36,14 +36,16 @@ public class BridgeObject : MonoBehaviour {
 
     public virtual void OnDestroy()
     {
-        if (bridge == null) {
+        //Debug.Log("BridgeObject: OnDestroy: ==== this: " + this + " destroying: " + destroying + " destroyed: " + destroyed);
+
+        if (destroyed) {
             return;
         }
-        
-        Debug.Log("BridgeObject: OnDestroy: ==== this: " + this + " destroyed: " + destroyed);
-        if (!destroyed) {
-            destroying = true;
-            Debug.Log("BridgeObject: OnDestroy: not destroyed so setting destroying and calling DestroyObject");
+
+        destroying = true;
+
+        //Debug.Log("BridgeObject: OnDestroy: not destroyed so set destroying: " + destroying + " and calling DestroyObject. bridge: " + ((bridge == null) ? "NULL" : bridge.id));
+        if (bridge != null) {
             bridge.DestroyObject(this);
         }
     }

@@ -76,6 +76,10 @@ public class ProCamera : BridgeObject {
     public Vector3 dragScreenDistance;
     public float dragDistance;
     public Vector3 dragPosition;
+    public float orthographicSizeMin = 1.0f;
+    public float orthographicSizeMax = 1000.0f;
+    public float orthographicSizeMouseScale = 1.0f;
+    public float orthographicSizeWheelScale = 1.0f;
     public float fieldOfViewMax = 120.0f;
     public float fieldOfViewMin = 1.0f;
     public float fieldOfViewScale = -0.2f;
@@ -484,16 +488,34 @@ public class ProCamera : BridgeObject {
 
                         case ProCameraTracking.Zoom: {
 
-                            float fov = proCamera.fieldOfView;
-                            fov = 
-                                Mathf.Max(
-                                    fieldOfViewMin,
-                                    Mathf.Min(
-                                        fieldOfViewMax,
-                                        (fov +
-                                         (dragScreenDistance.y * fieldOfViewScale))));
-                            if (proCamera.fieldOfView != fov) {
-                                proCamera.fieldOfView = fov;
+                            if (proCamera.orthographic) {
+
+                                float orthographicSize = proCamera.orthographicSize;
+                                orthographicSize =
+                                    Mathf.Max(
+                                        orthographicSizeMin,
+                                        Mathf.Min(
+                                            orthographicSizeMax,
+                                            (orthographicSize +
+                                             (dragScreenDistance.y * orthographicSizeMouseScale))));
+                                if (proCamera.orthographicSize != orthographicSize) {
+                                    proCamera.orthographicSize = orthographicSize;
+                                }
+
+                            } else {
+
+                                float fov = proCamera.fieldOfView;
+                                fov = 
+                                    Mathf.Max(
+                                        fieldOfViewMin,
+                                        Mathf.Min(
+                                            fieldOfViewMax,
+                                            (fov +
+                                             (dragScreenDistance.y * fieldOfViewScale))));
+                                if (proCamera.fieldOfView != fov) {
+                                    proCamera.fieldOfView = fov;
+                                }
+
                             }
 
                             break;
@@ -657,22 +679,41 @@ public class ProCamera : BridgeObject {
         wheelPanDelta += scrollX * wheelPanSpeed * deltaTime;
 
         if (wheelZoomDelta != 0.0f) {
-            zoomDeltaRotated =
-                transform.rotation *
-                (Vector3.forward * wheelZoomDelta * wheelZoomSpeed);
 
-            Vector3 pos =
-                transform.position + zoomDeltaRotated;
+            if (proCamera.orthographic) {
 
-            pos = 
-                new Vector3(
-                    Mathf.Clamp(pos.x, positionMin.x, positionMax.x),
-                    Mathf.Clamp(pos.y, positionMin.y, positionMax.y),
-                    Mathf.Clamp(pos.z, positionMin.z, positionMax.z));
+                float orthographicSize = proCamera.orthographicSize;
+                orthographicSize =
+                    Mathf.Max(
+                        orthographicSizeMin,
+                        Mathf.Min(
+                            orthographicSizeMax,
+                            (orthographicSize +
+                             (wheelZoomDelta * orthographicSizeWheelScale))));
+                if (proCamera.orthographicSize != orthographicSize) {
+                    proCamera.orthographicSize = orthographicSize;
+                }
 
-            if (transform.position != pos) {
-                //Debug.Log("ProCamera: Update: Zoom: wheelZoomDelta: " + wheelZoomDelta + " zoomDeltaRotated: " + zoomDeltaRotated.x + " " + zoomDeltaRotated.y + " " + zoomDeltaRotated.z + " pos: " + pos.x + " " + pos.y + " " + pos.z + " transform.position: " + transform.position.x + " " + transform.position.y + " " + transform.position.z + " delta: " + (pos.x - transform.position.z) + " " + (pos.y - transform.position.y) + " " + (pos.z - transform.position.z));
-                transform.position = pos;
+            } else {
+
+                zoomDeltaRotated =
+                    transform.rotation *
+                    (Vector3.forward * wheelZoomDelta * wheelZoomSpeed);
+
+                Vector3 pos =
+                    transform.position + zoomDeltaRotated;
+
+                pos = 
+                    new Vector3(
+                        Mathf.Clamp(pos.x, positionMin.x, positionMax.x),
+                        Mathf.Clamp(pos.y, positionMin.y, positionMax.y),
+                        Mathf.Clamp(pos.z, positionMin.z, positionMax.z));
+
+                if (transform.position != pos) {
+                    //Debug.Log("ProCamera: Update: Zoom: wheelZoomDelta: " + wheelZoomDelta + " zoomDeltaRotated: " + zoomDeltaRotated.x + " " + zoomDeltaRotated.y + " " + zoomDeltaRotated.z + " pos: " + pos.x + " " + pos.y + " " + pos.z + " transform.position: " + transform.position.x + " " + transform.position.y + " " + transform.position.z + " delta: " + (pos.x - transform.position.z) + " " + (pos.y - transform.position.y) + " " + (pos.z - transform.position.z));
+                    transform.position = pos;
+                }
+
             }
 
             gotInput = true;

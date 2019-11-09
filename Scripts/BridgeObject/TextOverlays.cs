@@ -22,47 +22,48 @@ public class TextOverlays: Tracker {
 
 
     public Canvas canvas;
+    public RectTransform canvasRect;
     public RectTransform panel;
     public Image panelImage;
+    public RectTransform sidePanel;
+    public RawImage sidePanelImage;
+    public TextMeshProUGUI sideText;
     public RectTransform infoPanel;
-    public RectTransform infoPanelImage;
+    public RawImage infoPanelImage;
     public TextMeshProUGUI infoText;
     public RectTransform overlay;
     public TextMeshProUGUI centerText;
+    public int canvasWidth = 0;
+    public int canvasHeight = 0;
 
 
     ////////////////////////////////////////////////////////////////////////
     // Instance Methods
 
 
-    public void HandleConsoleInputFieldValueChanged()
+    public void Update()
     {
-        Debug.Log("TextOverlays: HandleConsoleInputFieldValueChanged");
+        
+        if ((canvasWidth != canvasRect.sizeDelta.x) ||
+            (canvasHeight != canvasRect.sizeDelta.y)) {
+            canvasWidth = (int)Mathf.Floor(canvasRect.sizeDelta.x);
+            canvasHeight = (int)Mathf.Floor(canvasRect.sizeDelta.y);
+            SendEventName("ResizeCanvas");
+        }
     }
-    
 
-    public void HandleConsoleInputFieldEndEdit()
-    {
-        Debug.Log("TextOverlays: HandleConsoleInputFieldEndEdit");
-    }
-    
-
-    public void HandleConsoleInputFieldSelect()
-    {
-        Debug.Log("TextOverlays: HandleConsoleInputFieldSelect");
-    }
-    
-
-    public void HandleConsoleInputFieldDeselect()
-    {
-        Debug.Log("TextOverlays: HandleConsoleInputFieldDeselect");
-    }
-    
 
     public void HandleClickInfoPanel()
     {
         //Debug.Log("TextOverlays: HandleClickInfoPanel");
         SendEventName("ClickInfoPanel");
+    }
+    
+
+    public void HandleEventSidePanel(string eventName)
+    {
+        //Debug.Log("TextOverlays: HandleEventSidePanel", eventName);
+        SendEventName(eventName);
     }
     
 

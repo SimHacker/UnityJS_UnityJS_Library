@@ -254,7 +254,7 @@ public class Bridge : BridgeObject {
 
     public override void OnDestroy()
     {
-        Debug.Log("Bridge: OnDestroy: this: " + this + " bridge: " +  ((bridge == null) ? "null" : ("" + bridge)) + " enabled: " + this.enabled);
+        //Debug.Log("Bridge: OnDestroy: this: " + this + " bridge: " +  ((bridge == null) ? "null" : ("" + bridge)) + " enabled: " + this.enabled);
 
         base.OnDestroy();
 
@@ -670,8 +670,16 @@ public class Bridge : BridgeObject {
                 continue;
             }
 
-            Debug.Log("Bridge: DistributeUnityEvent: HardBoot: destroying object: " + objectID);
-            DestroyObject(idToObject[objectID]);
+            if (!idToObject.ContainsKey(objectID)) {
+                Debug.Log("Bridge: DistributeUnityEvent: HardBoot: undefined objectID: " + objectID);
+                continue;
+            }
+
+            var obj = idToObject[objectID];
+
+            Debug.Log("Bridge: DistributeUnityEvent: HardBoot: destroying object: " + objectID + " obj: " + obj);
+
+            DestroyObject(obj);
         }
 
         idToObject = new Dictionary<string, object>();
@@ -712,7 +720,7 @@ public class Bridge : BridgeObject {
     {
         BridgeObject bridgeObject = obj as BridgeObject;
 
-        Debug.Log("Bridge: DestroyObject: ======== obj: " + obj + " bridgeObject: " + bridgeObject);
+        //Debug.Log("Bridge: DestroyObject: ======== obj: " + obj + " bridgeObject: " + bridgeObject + " destroying: " + bridgeObject.destroying + " destroyed: " + bridgeObject.destroyed);
 
         string id = null;
 
@@ -721,7 +729,7 @@ public class Bridge : BridgeObject {
 
             id = bridgeObject.id;
 
-            Debug.Log("Bridge: DestroyObject: bridgeObject: " + bridgeObject + " id: " + id + " checking destroyed: " + bridgeObject.destroyed + " destroying: " + destroying);
+            //Debug.Log("Bridge: DestroyObject: bridgeObject: " + bridgeObject + " id: " + id + " checking destroyed: " + bridgeObject.destroyed + " destroying: " + bridgeObject.destroying);
 
             if (bridgeObject.destroyed) {
                 Debug.Log("Bridge: DestroyObject: already destroyed!");
@@ -730,14 +738,14 @@ public class Bridge : BridgeObject {
 
             bridgeObject.destroyed = true;
 
-            Debug.Log("Bridge: DestroyObject: bridgeObject: " + bridgeObject + " id: " + id + " restarting: " + restarting);
+            //Debug.Log("Bridge: DestroyObject: bridgeObject: " + bridgeObject + " id: " + id + " restarting: " + restarting);
 
             if (!restarting) {
                 bridgeObject.SendEventName("Destroyed");
             }
 
-            Debug.Log("Bridge: DestroyObject: DestroyImmediate: id: " + bridgeObject.id + " gameObject: " + bridgeObject.gameObject + " destroying: " + destroying);
-            if (!destroying) {
+            //Debug.Log("Bridge: DestroyObject: DestroyImmediate: id: " + bridgeObject.id + " gameObject: " + bridgeObject.gameObject + " destroying: " + bridgeObject.destroying);
+            if (!bridgeObject.destroying) {
                 DestroyImmediate(bridgeObject.gameObject);
             }
         }
