@@ -117,6 +117,18 @@ public class ProCamera : BridgeObject {
     public Quaternion animationStartRotation;
     public Quaternion animationEndRotation;
     public Quaternion animationRotation;
+    public float animationStartOrthographicSize;
+    public float animationEndOrthographicSize;
+    public float animationOrthographicSize;
+    public BridgeObject target;
+    public bool targetSnap = false;
+    public bool targetSnapAlways = true;
+    public bool targetAnimate = false;
+    public float targetDistance = 1000f;
+    public float targetSizeMin = 1.0f;
+    public float targetSizeScale = 1.05f;
+    public Vector3 targetOrientation = new Vector3(30.0f, 0.0f, 0.0f);
+    public float targetAnimationDuration = 0.5f;
 
 
     ////////////////////////////////////////////////////////////////////////
@@ -125,17 +137,143 @@ public class ProCamera : BridgeObject {
 
     void Update()
     {
-        if (!initialized) {
+        if (!initialized)
+        {
 
             initialized = true;
 
-            if (proCamera == null) {
+            if (proCamera == null)
+            {
                 proCamera = gameObject.GetComponent<Camera>();
             }
 
             initialPosition = transform.position;
             initialRotation = transform.rotation;
             initialEulers = transform.rotation.eulerAngles;
+
+        }
+
+        if ((target != null) &&
+            (targetSnapAlways || targetSnap || targetAnimate))
+        {
+            Vector3 targetPosition = target.transform.position;
+            Quaternion targetRotation = Quaternion.Euler(targetOrientation);
+            Quaternion targetRotationInverse = Quaternion.Inverse(targetRotation);
+            Bounds bounds = new Bounds(targetPosition, Vector3.zero);
+            Bounds boundsRotated = new Bounds(targetRotation * targetPosition, Vector3.zero);
+            bool first = true;
+
+            foreach (MeshFilter mf in target.transform.GetComponentsInChildren<MeshFilter>()) {
+
+                if ((mf.mesh == null) ||
+                    !mf.gameObject.activeInHierarchy ||
+                    mf.gameObject.CompareTag("IgnoreBounds")) {
+                    continue;
+                }
+
+                //Debug.Log("mf " + mf + " " + mf.mesh.vertices.Length);
+
+                Transform xform = mf.transform;
+                Vector3[] verts = mf.mesh.vertices;
+
+#if false
+                Bounds bounds2 = new Bounds(targetPosition, Vector3.zero);
+                Bounds boundsRotated2 = new Bounds(targetRotation * targetPosition, Vector3.zero);
+                bool first2 = true;
+#endif
+                foreach (Vector3 vert in verts) {
+
+                    Vector3 v = xform.TransformPoint(vert);
+                    Vector3 vRotated = targetRotationInverse * v;
+
+                    if (first) {
+                        first = false;
+                        bounds.center = v;
+                        bounds.extents = Vector3.zero;
+                        boundsRotated.center = vRotated;
+                        boundsRotated.extents = Vector3.zero;
+                    } else {
+                        bounds.Encapsulate(v);
+                        boundsRotated.Encapsulate(vRotated);
+                    }
+
+#if false
+                    if (first2) {
+                        first2 = false;
+                        bounds2.center = v;
+                        bounds2.extents = Vector3.zero;
+                        boundsRotated2.center = vRotated;
+                        boundsRotated2.extents = Vector3.zero;
+                    } else {
+                        bounds2.Encapsulate(v);
+                        boundsRotated2.Encapsulate(vRotated);
+                    }
+#endif
+
+                    //Debug.Log("v " + v.x + " " + v.y + " " + v.z + " vRotated " + vRotated.x + " " + vRotated.y + " " + vRotated.z + " bounds center " + bounds.center.x + " " + bounds.center.y + " " + bounds.center.z + " extent " + bounds.extents.x + " " + bounds.extents.y + " " + bounds.extents.z);
+                }
+
+#if false
+                DrawBounds(bounds2, Quaternion.identity, Quaternion.identity, Color.green);
+                DrawBounds(boundsRotated2, targetRotation, Quaternion.identity, Color.blue);
+#endif
+            }
+
+#if false
+            DrawBounds(bounds, Quaternion.identity, Quaternion.identity, Color.green);
+            DrawBounds(boundsRotated, targetRotation, Quaternion.identity, Color.blue);
+#endif
+            
+            Vector3 cameraOffset =
+                targetRotation *
+                (Vector3.forward * targetDistance);
+
+            //Debug.Log("targetDistance: " + targetDistance + " cameraOffset: " + cameraOffset.x + " " + cameraOffset.y + " " + cameraOffset.z + " magnitude: " + cameraOffset.magnitude);
+
+            Vector3 boundsCenter = bounds.center;
+            Vector3 cameraPosition = boundsCenter - cameraOffset;
+
+            //Debug.DrawLine(cameraPosition, boundsCenter, Color.cyan);
+
+            // Camera orthographic size is height of view volume height.
+            // Camera aspect ratio is screen width over height.
+            // So divide sizeX by camera aspect to get vertical orthographic size.
+            float sizeX = 
+                targetSizeScale *
+                Mathf.Max(
+                    targetSizeMin,
+                    boundsRotated.extents.x);
+            float sizeY =
+                targetSizeScale *
+                Mathf.Max(
+                    targetSizeMin,
+                    boundsRotated.extents.y);
+            float size =
+                Mathf.Max(
+                    sizeX / proCamera.aspect,
+                    sizeY);
+
+            //Debug.Log("size: " + size + " sizeX: " + sizeX + " sizeY: " + sizeY + " aspect: " + proCamera.aspect + " sizeX/aspect: " + (sizeX / proCamera.aspect) + " cameraPosition: " + cameraPosition.x + " " + cameraPosition.y + " " + cameraPosition.z);
+
+            if (size > 0.0f) {
+
+                if (targetAnimate) {
+                    animationStart = true;
+                    animationDuration = targetAnimationDuration;
+                    animationCancelsDragging = false;
+                    animationCanceledByDragging = false;
+                    animationEndPosition = cameraPosition;
+                    animationEndRotation = targetRotation;
+                    animationEndOrthographicSize = size;
+                } else {
+                    transform.position = cameraPosition;
+                    transform.rotation = targetRotation;
+                    proCamera.orthographicSize = size;
+                }
+
+                targetSnap = false;
+                targetAnimate = false;
+            }
 
         }
 
@@ -741,6 +879,7 @@ public class ProCamera : BridgeObject {
             animationStartTime = Time.time;
             animationStartPosition = transform.position;
             animationStartRotation = transform.rotation;
+            animationStartOrthographicSize = proCamera.orthographicSize;
         }
 
         if (animating) {
@@ -763,6 +902,11 @@ public class ProCamera : BridgeObject {
                         animationStartRotation, 
                         animationEndRotation,
                         t);
+                animationOrthographicSize =
+                    Mathf.Lerp(
+                        animationStartOrthographicSize, 
+                        animationEndOrthographicSize,
+                        t);
 
             } else {
 
@@ -771,16 +915,88 @@ public class ProCamera : BridgeObject {
                 animating = false;
                 animationPosition = animationEndPosition;
                 animationRotation = animationEndRotation;
+                animationOrthographicSize = animationEndOrthographicSize;
 
             }
 
             transform.position = animationPosition;
             transform.rotation = animationRotation;
+            proCamera.orthographicSize = animationOrthographicSize;
 
         }
     }
 
-    
+
+    public void DrawBounds(Bounds b, Quaternion rotation0, Quaternion rotation1, Color c)
+    {
+#if true
+        Vector3 c000 = rotation0 * (b.center + (rotation1 * new Vector3(-b.extents.x, -b.extents.y, -b.extents.z)));
+        Vector3 c001 = rotation0 * (b.center + (rotation1 * new Vector3(-b.extents.x, -b.extents.y, +b.extents.z)));
+        Vector3 c010 = rotation0 * (b.center + (rotation1 * new Vector3(-b.extents.x, +b.extents.y, -b.extents.z)));
+        Vector3 c011 = rotation0 * (b.center + (rotation1 * new Vector3(-b.extents.x, +b.extents.y, +b.extents.z)));
+
+        Vector3 c100 = rotation0 * (b.center + (rotation1 * new Vector3(+b.extents.x, -b.extents.y, -b.extents.z)));
+        Vector3 c101 = rotation0 * (b.center + (rotation1 * new Vector3(+b.extents.x, -b.extents.y, +b.extents.z)));
+        Vector3 c110 = rotation0 * (b.center + (rotation1 * new Vector3(+b.extents.x, +b.extents.y, -b.extents.z)));
+        Vector3 c111 = rotation0 * (b.center + (rotation1 * new Vector3(+b.extents.x, +b.extents.y, +b.extents.z)));
+#else
+        Vector3 c000 = rotation * (b.center + new Vector3(-b.extents.x, -b.extents.y, -b.extents.z));
+        Vector3 c001 = rotation * (b.center + new Vector3(-b.extents.x, -b.extents.y, +b.extents.z));
+        Vector3 c010 = rotation * (b.center + new Vector3(-b.extents.x, +b.extents.y, -b.extents.z));
+        Vector3 c011 = rotation * (b.center + new Vector3(-b.extents.x, +b.extents.y, +b.extents.z));
+
+        Vector3 c100 = rotation * (b.center + new Vector3(+b.extents.x, -b.extents.y, -b.extents.z));
+        Vector3 c101 = rotation * (b.center + new Vector3(+b.extents.x, -b.extents.y, +b.extents.z));
+        Vector3 c110 = rotation * (b.center + new Vector3(+b.extents.x, +b.extents.y, -b.extents.z));
+        Vector3 c111 = rotation * (b.center + new Vector3(+b.extents.x, +b.extents.y, +b.extents.z));
+#endif
+
+        Debug.DrawLine(c000, c001, c);
+        Debug.DrawLine(c010, c011, c);
+        Debug.DrawLine(c000, c010, c);
+        Debug.DrawLine(c001, c011, c);
+        
+        Debug.DrawLine(c100, c101, c);
+        Debug.DrawLine(c110, c111, c);
+        Debug.DrawLine(c100, c110, c);
+        Debug.DrawLine(c101, c111, c);
+        
+        Debug.DrawLine(c000, c100, c);
+        Debug.DrawLine(c001, c101, c);
+        Debug.DrawLine(c010, c110, c);
+        Debug.DrawLine(c011, c111, c);
+    }
+
+    public Bounds RotateBounds(Bounds b, Quaternion rotation)
+    {
+        bool firstCorner = true;
+        Bounds bb = new Bounds();
+        //Vector3 center = rotation * b.center;
+        Vector3 center = b.center;
+        foreach (Vector3 corner in new Vector3[] {
+            new Vector3(+b.extents.x, +b.extents.y, +b.extents.z), 
+            new Vector3(+b.extents.x, +b.extents.y, -b.extents.z), 
+            new Vector3(+b.extents.x, -b.extents.y, +b.extents.z), 
+            new Vector3(+b.extents.x, -b.extents.y, -b.extents.z), 
+            new Vector3(-b.extents.x, +b.extents.y, +b.extents.z), 
+            new Vector3(-b.extents.x, +b.extents.y, -b.extents.z), 
+            new Vector3(-b.extents.x, -b.extents.y, +b.extents.z), 
+            new Vector3(-b.extents.x, -b.extents.y, -b.extents.z), 
+        }) {
+            //Vector3 c = rotation * (corner + center);
+            Vector3 c = (rotation * corner) + center;
+            if (firstCorner) {
+                bb.center = c;
+                bb.size = Vector3.zero;
+                firstCorner = false;
+            } else {
+                bb.Encapsulate(c);
+            }
+        }
+
+        return bb;
+    }
+
 }
 
 

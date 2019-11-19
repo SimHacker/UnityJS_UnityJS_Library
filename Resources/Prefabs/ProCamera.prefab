@@ -210,6 +210,10 @@ MonoBehaviour:
   dragScreenDistance: {x: 0, y: 0, z: 0}
   dragDistance: 0
   dragPosition: {x: 0, y: 0, z: 0}
+  orthographicSizeMin: 1
+  orthographicSizeMax: 1000
+  orthographicSizeMouseScale: 1
+  orthographicSizeWheelScale: 1
   fieldOfViewMax: 120
   fieldOfViewMin: 1
   fieldOfViewScale: -0.2
@@ -232,6 +236,32 @@ MonoBehaviour:
   interpolateColumns: 0
   interpolatePositions: []
   interpolateRotations: []
+  animating: 0
+  animationStart: 0
+  animationCancelsDragging: 0
+  animationCanceledByDragging: 0
+  animationCancel: 0
+  animationDuration: 0.5
+  animationDurationMin: 0.1
+  animationStartTime: -100
+  animationStartPosition: {x: 0, y: 0, z: 0}
+  animationEndPosition: {x: 0, y: 0, z: 0}
+  animationPosition: {x: 0, y: 0, z: 0}
+  animationStartRotation: {x: 0, y: 0, z: 0, w: 0}
+  animationEndRotation: {x: 0, y: 0, z: 0, w: 0}
+  animationRotation: {x: 0, y: 0, z: 0, w: 0}
+  animationStartOrthographicSize: 0
+  animationEndOrthographicSize: 0
+  animationOrthographicSize: 0
+  target: {fileID: 0}
+  targetSnap: 0
+  targetSnapAlways: 0
+  targetAnimate: 0
+  targetDistance: 1000
+  targetSizeMin: 1
+  targetSizeScale: 1.1
+  targetOrientation: {x: 30, y: 0, z: 0}
+  targetAnimationDuration: 0.5
 --- !u!114 &-6798878107263553993
 MonoBehaviour:
   m_ObjectHideFlags: 0
