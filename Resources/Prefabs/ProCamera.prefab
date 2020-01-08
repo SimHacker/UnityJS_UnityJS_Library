@@ -256,6 +256,7 @@ MonoBehaviour:
   target: {fileID: 0}
   targetSnap: 0
   targetSnapAlways: 0
+  targetSnapPadding: 10
   targetAnimate: 0
   targetDistance: 1000
   targetSizeMin: 1
