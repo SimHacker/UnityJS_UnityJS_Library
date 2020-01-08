@@ -104,12 +104,11 @@ public class BridgeObject : MonoBehaviour {
                 break;
             }
 
-            case "Query": {
+            case "SetGlobals": {
                 JObject dataObject = (JObject)data;
-                JObject query = (JObject)dataObject["query"];
-                string callbackID = (string)dataObject["callbackID"];
-                //Debug.Log("BridgeObject: HandleEvent: Query: dataObject: " + dataObject + " query: " + query + " callbackID: " + callbackID + " bridge: " + bridge);
-                bridge.SendQueryData(this, query, callbackID);
+                JObject globals = (JObject)dataObject["globals"];
+                //Debug.Log("BridgeObject: HandleEvent: SetGlobals: dataObject: " + dataObject + " globals: " + globals + " bridge: " + bridge);
+                bridge.SetGlobals(this, globals);
                 break;
             }
 
@@ -362,7 +361,7 @@ public class BridgeObject : MonoBehaviour {
 
         }
 
-        // Always send Created and Destoyed events.
+        // Always send Created and Destroyed events.
         if ((!doNotSend) &&
             (foundInterest ||
              (eventName == "Created") ||

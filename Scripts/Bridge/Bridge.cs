@@ -44,6 +44,7 @@ public class Bridge : BridgeObject {
 
     public Dictionary<string, object> idToObject = new Dictionary<string, object>();
     public Dictionary<object, string> objectToID = new Dictionary<object, string>();
+    public Dictionary<string, object> keyToGlobal = new Dictionary<string, object>();
     public Dictionary<string, TextureChannelDelegate> textureChannels = new Dictionary<string, TextureChannelDelegate>();
     public Booter booter;
     public string gameID = "";
@@ -61,6 +62,8 @@ public class Bridge : BridgeObject {
     public string handleStartedScript = "";
     public string handleLoadedScript = "";
     public string handleLoadFailedScript = "";
+    public bool applicationFocused = false;
+    public bool applicationPaused = false;
 
 
     ////////////////////////////////////////////////////////////////////////
@@ -244,9 +247,27 @@ public class Bridge : BridgeObject {
     }
 
 
+    void OnApplicationFocus(bool focused)
+    {
+        //Debug.Log("Bridge: OnApplicationFocus: focused: " + focused);
+        applicationFocused = focused;
+    }
+
+
+    void OnApplicationPause(bool paused)
+    {
+        //Debug.Log("Bridge: OnApplicationPause: paused: " + paused);
+        applicationPaused = paused;
+    }
+
+
     public void Start()
     {
         //Debug.Log("Bridge: Start: this: " + this + " bridge: " +  ((bridge == null) ? "null" : ("" + bridge)) + " enabled: " + this.enabled);
+
+#if !UNITY_EDITOR && UNITY_WEBGL
+        WebGLInput.captureAllKeyboardInput = false;
+#endif
 
         StartBridge();
     }
@@ -356,7 +377,7 @@ public class Bridge : BridgeObject {
 
     public void HandleTransportStarted()
     {
-        Debug.Log("Bridge: HandleTransportStarted: this: " + this);
+        //Debug.Log("Bridge: HandleTransportStarted: this: " + this);
 
         string js = "";
 
@@ -382,20 +403,20 @@ public class Bridge : BridgeObject {
         }
 
         js +=
-          "bridge.start(" + 
-          JsonConvert.ToString(transport.driver) +
-          ", " + 
-          JsonConvert.ToString(configuration) + 
-          "); ";
+            "bridge.start(" + 
+            JsonConvert.ToString(transport.driver) +
+            ", " + 
+            JsonConvert.ToString(configuration) + 
+            "); ";
 
-        Debug.Log("Bridge: HandleTransportStarted: EvaluateJS: " + js);
+        //Debug.Log("Bridge: HandleTransportStarted: EvaluateJS: " + js);
 
         transport.EvaluateJS(js);
 
         JObject ev = new JObject();
         ev.Add("event", "StartedUnity");
 
-        Debug.Log("Bridge: HandleStart: sending StartedUnity ev: " + ev);
+        //Debug.Log("Bridge: HandleStart: sending StartedUnity ev: " + ev);
         SendEvent(ev);
     }
 
@@ -476,7 +497,7 @@ public class Bridge : BridgeObject {
 
             case "Create": {
 
-                string id = data.GetString("id");
+                string id = (string)data["id"];
                 string prefab = data.GetString("prefab");
                 string component = data.GetString("component");
                 JArray preEvents = data.GetArray("preEvents");
@@ -617,6 +638,68 @@ public class Bridge : BridgeObject {
 
             }
 
+            case "Query": {
+                JObject dataObject = (JObject)data;
+                JObject query = (JObject)dataObject["query"];
+                string callbackID = (string)dataObject["callbackID"];
+                //Debug.Log("Bridge: DistributeUnityEvent: Query: dataObject: " + dataObject + " query: " + query + " callbackID: " + callbackID + " bridge: " + bridge);
+
+                JToken idToken = ev["id"];
+                string idString = idToken.IsString() ? (string)idToken : null;
+                JArray idArray = idToken.IsArray() ? (JArray)idToken : null;
+                bool isSingle = idString != null;
+                if ((idString == null) && 
+                    (idArray == null)) {
+                    Debug.Log("Bridge: DistributeUnityEvent: Query: bad id: " + idToken + " data: " + data);
+                    break;
+                }
+
+                JArray queryResults = new JArray();
+
+                for (int i = 0, n = isSingle ? 1 : idArray.ArrayLength(); i < n; i++) {
+                    string id = isSingle ? idString : (string)idArray[i];
+                    if (id == null) {
+                        //Debug.Log("Bridge: DistributeUnityEvent: empty id!");
+                        continue;
+                    }
+
+                    //Debug.Log("Bridge: DistributeUnityEvent: id: " + id + " ev: " + ev);
+
+                    if (string.IsNullOrEmpty(id)) {
+                        Debug.LogError("Bridge: DistributeUnityEvent: undefined id on eventName: " + eventName + " ev: " + ev);
+                        continue;
+                    }
+
+                    if (!idToObject.ContainsKey(id)) {
+                        Debug.LogWarning("Bridge: DistributeUnityEvent: missing id: " + id + " ev: " + ev);
+                        continue;
+                    }
+
+                    object obj = idToObject[id];
+                    //Debug.Log("Bridge: DistributeUnityEvent: obj: " + obj);
+
+                    BridgeObject bridgeObject = obj as BridgeObject;
+
+                    if (bridgeObject == null) {
+                        Debug.LogError("Bridge: DistributeUnityEvent: tried to send eventName: " + eventName + " to non-BridgeObject obj: " + obj + " id: " + id + " ev: " + ev);
+                        continue;
+                    }
+
+                    JObject queryResult = new JObject();
+                    AddQueryData(obj, query, queryResult);
+
+                    //Debug.Log("Bridge: QueryData: queryResult: " + queryResult);
+
+                    queryResults.Add(queryResult);
+                }
+
+                if (!string.IsNullOrEmpty(callbackID)) {
+                    SendCallbackData(callbackID, isSingle ? queryResults[0] : queryResults);
+                }
+
+                break;
+            }
+
             default: {
 
                 string id = (string)ev["id"];
@@ -657,9 +740,11 @@ public class Bridge : BridgeObject {
     {
         string js = "bridge.boot();";
 
-        Debug.Log("Bridge: Boot: destroying objects");
+        //Debug.Log("Bridge: Boot: destroying objects");
 
         restarting = true;
+
+        ClearGlobals();
 
         string[] keys = new string[idToObject.Keys.Count];
         idToObject.Keys.CopyTo(keys, 0);
@@ -677,7 +762,7 @@ public class Bridge : BridgeObject {
 
             var obj = idToObject[objectID];
 
-            Debug.Log("Bridge: DistributeUnityEvent: HardBoot: destroying object: " + objectID + " obj: " + obj);
+            //Debug.Log("Bridge: DistributeUnityEvent: HardBoot: destroying object: " + objectID + " obj: " + obj);
 
             DestroyObject(obj);
         }
@@ -696,10 +781,10 @@ public class Bridge : BridgeObject {
         objectToID = new Dictionary<object, string>();
         startedJS = false;
 
-        Debug.Log("Bridge: HardBoot: calling HandleTranportStarted");
+        //Debug.Log("Bridge: HardBoot: calling HandleTranportStarted");
         HandleTransportStarted();
 
-        Debug.Log("Bridge: Boot: transport: " + transport + " calling EvaluateJS: " + js);
+        //Debug.Log("Bridge: Boot: transport: " + transport + " calling EvaluateJS: " + js);
         transport.EvaluateJS(js);
     }
 
@@ -768,7 +853,79 @@ public class Bridge : BridgeObject {
     }
 
 
-    public void SendCallbackData(string callbackID, JObject data)
+    public bool CheckGlobal(string key)
+    {
+        return keyToGlobal.ContainsKey(key);
+    }
+    
+
+    public bool GetGlobal(string key, out object value)
+    {
+        if (keyToGlobal.ContainsKey(key)) {
+            value = keyToGlobal[key];
+            //Debug.Log("Bridge: GetGlobal: found key: " + key + " value: " + value);
+            return true;
+        } else {
+            value = null;
+            Debug.Log("Bridge: GetGlobal: undefined key: " + key);
+            return false;
+        }
+    }
+
+
+    public void SetGlobal(string key, object value)
+    {
+        //Debug.Log("Bridge: SetGlobal: key: " + key + " value: " + value);
+        keyToGlobal[key] = value;
+    }
+
+
+    public void DeleteGlobal(string key)
+    {
+        //Debug.Log("Bridge: DeleteGlobal: key: " + key);
+        if (keyToGlobal.ContainsKey(key)) {
+            keyToGlobal.Remove(key);
+        }
+    }
+
+
+    public void ClearGlobals()
+    {
+        //Debug.Log("Bridge: ClearGlobals");
+        keyToGlobal.Clear();
+    }
+
+
+    public void SetGlobals(object obj, JObject globals)
+    {
+        //Debug.Log("Bridge: SetGlobals: globals: " + globals);
+
+        foreach (var item in globals) {
+            string key = item.Key;
+            string path = (string)item.Value;
+            object value = null;
+            JToken valueData = null;
+
+            //Debug.Log("Bridge: SetGlobals: get property obj: " + obj + " path: " + path);
+
+            if (!Accessor.GetProperty(obj, path, ref value)) {
+
+                Debug.LogError("Bridge: GetGlobals: can't get property path: " + path);
+
+            } else {
+
+                //Debug.Log("Bridge: GetGlobals: got property value: " + ((value == null) ? "null" : ("" + value)));
+
+                SetGlobal(key, value);
+
+            }
+
+        }
+
+    }
+
+
+    public void SendCallbackData(string callbackID, JToken data)
     {
         //Debug.Log("Bridge: SendCallbackData: callbackID: " + callbackID + " results: " + results);
         JObject ev = new JObject();
@@ -779,22 +936,6 @@ public class Bridge : BridgeObject {
         //Debug.Log("Bridge: SendCallbackData: sending ev: " + ev);
 
         SendEvent(ev);
-    }
-
-
-    public virtual void SendQueryData(object obj, JObject query, string callbackID)
-    {
-        //Debug.Log("Bridge: SendQueryData: obj: " + obj + " query: " + query + " callbackID: " + callbackID);
-
-        JObject data = new JObject();
-        AddQueryData(obj, query, data);
-
-        //Debug.Log("Bridge: QueryData: data: " + data);
-
-        if (!string.IsNullOrEmpty(callbackID)) {
-            SendCallbackData(callbackID, data);
-        }
-
     }
 
 
@@ -831,8 +972,6 @@ public class Bridge : BridgeObject {
                 }
 
             }
-
-            //data[key] = valueData;
 
         }
 
@@ -963,6 +1102,12 @@ public class Bridge : BridgeObject {
             result = null;
             return true;
         }
+
+        // Convert bridge objects into object references.
+        BridgeObject bo = value as BridgeObject;
+        if (bo) {
+            value = "object:" + bo.id;
+        }            
 
         result = JToken.FromObject(value, jsonSerializer);
 
