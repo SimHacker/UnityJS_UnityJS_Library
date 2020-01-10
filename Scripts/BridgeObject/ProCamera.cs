@@ -123,7 +123,7 @@ public class ProCamera : BridgeObject {
     public BridgeObject target;
     public bool targetSnap = false;
     public bool targetSnapAlways = true;
-    public float targetSnapPadding = 5.0f;
+    public float targetSnapPadding = 20.0f;
     public bool targetAnimate = false;
     public float targetDistance = 1000f;
     public float targetSizeMin = 1.0f;
