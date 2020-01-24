@@ -122,7 +122,7 @@ public class ProCamera : BridgeObject {
     public float animationOrthographicSize;
     public BridgeObject target;
     public bool targetSnap = false;
-    public bool targetSnapAlways = true;
+    public bool targetSnapAlways = false;
     public float targetSnapPadding = 20.0f;
     public bool targetAnimate = false;
     public float targetDistance = 1000f;
@@ -158,7 +158,7 @@ public class ProCamera : BridgeObject {
             (targetSnapAlways || targetSnap || targetAnimate))
         {
             //float startTime = Time.time;
-            //Debug.Log("ProCamera.cs: Update: targetSnap: begin");
+            //Debug.Log("ProCamera.cs: Update: targetSnap: begin: target: " + target + " targetSnapAlways: " + targetSnapAlways + " targetSnap: " + targetSnap + " targetAnimate: " + targetAnimate);
 
             Vector3 targetPosition = target.transform.position;
             Quaternion targetRotation = Quaternion.Euler(targetOrientation);
@@ -244,9 +244,10 @@ public class ProCamera : BridgeObject {
                     proCamera.orthographicSize = size;
                 }
 
-                targetSnap = false;
                 targetAnimate = false;
             }
+
+            targetSnap = false;
 
             //float endTime = Time.time;
             //Debug.Log("ProCamera.cs: Update: targetSnap: end: duration: " + (endTime - startTime));
