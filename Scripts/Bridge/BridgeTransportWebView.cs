@@ -304,14 +304,14 @@ public class BridgeTransportWebView : BridgeTransport
 
     public override void EvaluateJS(string js)
     {
-        //Debug.Log("BridgeTransportWebView: EvaluateJS: js: " + js.Length + " " + js);
+        Debug.Log("BridgeTransportWebView: EvaluateJS: js: " + js.Length + " " + js);
         unityJSPlugin.EvaluateJS(js);
     }
 
 
     public void EvaluateJSReturnResult(string js)
     {
-        //Debug.Log("BridgeTransportWebView: EvaluateJSReturnResult: js: " + js.Length + " " + js);
+        Debug.Log("BridgeTransportWebView: EvaluateJSReturnResult: js: " + js.Length + " " + js);
         unityJSPlugin.EvaluateJSReturnResult(js);
     }
 
