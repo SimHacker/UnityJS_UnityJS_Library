@@ -470,7 +470,7 @@ public class Bridge : BridgeObject {
     {
         string eventName = (string)ev["event"];
 
-        Debug.Log("Bridge: DistributeUnityEvent: eventName: " + eventName + " ev: " + ev);
+        //Debug.Log("Bridge: DistributeUnityEvent: eventName: " + eventName + " ev: " + ev);
 
         JObject data = ev["data"] as JObject;
 
