@@ -34,6 +34,7 @@ public class Accessor {
         Resource,
         Object,
         Method,
+        Global,
     };
 
 
@@ -396,6 +397,12 @@ public class Accessor {
                 case "method": // method name
 
                     accessor.Init_Method(nextObj, rest, conditional, excited);
+
+                    break;
+
+                case "global": // global name
+
+                    accessor.Init_Global(nextObj, rest, conditional, excited);
 
                     break;
 
@@ -791,6 +798,17 @@ public class Accessor {
     }
 
 
+    public void Init_Global(object obj0, string globalName0, bool conditional0, bool excited0)
+    {
+        Clear();
+        type = AccessorType.Global;
+        obj = obj0;
+        str = globalName0;
+        conditional = conditional0;
+        excited = excited0;
+    }
+
+
     public bool CanGet()
     {
         switch (type) {
@@ -837,6 +855,9 @@ public class Accessor {
             case AccessorType.Method:
                 return true;
 
+            case AccessorType.Global:
+                return true;
+
         }
 
         return false;
@@ -846,6 +867,8 @@ public class Accessor {
     public bool Get(ref object result)
     {
         result = null;
+
+        //Debug.Log("Accessor: Get: type: " + type + " str: " + str + " index: " + index);
 
         switch (type) {
 
@@ -891,6 +914,9 @@ public class Accessor {
 
             case AccessorType.Method:
                 return Get_Method(ref result);
+
+            case AccessorType.Global:
+                return Get_Global(ref result);
 
         }
 
@@ -1182,6 +1208,14 @@ public class Accessor {
     }
 
 
+    public bool Get_Global(ref object result)
+    {
+        bool found = Bridge.mainBridge.GetGlobal(str, out result);
+        //Debug.Log("Accessor: Get_Global: str: " + str + " found: " + found + " result: " + result);
+        return found;
+    }
+
+
     public bool CanSet()
     {
         switch (type) {
@@ -1226,6 +1260,9 @@ public class Accessor {
                 return false;
 
             case AccessorType.Method:
+                return true;
+
+            case AccessorType.Global:
                 return true;
 
         }
@@ -1285,6 +1322,9 @@ public class Accessor {
 
             case AccessorType.Method:
                 return Set_Method(obj, value);
+
+            case AccessorType.Global:
+                return Set_Global(obj, value);
 
         }
 
@@ -1469,6 +1509,14 @@ public class Accessor {
     }
     
 
+    public bool Set_Global(object obj, object value)
+    {
+        Bridge.mainBridge.SetGlobal(str, value);
+
+        return true;
+    }
+
+
     public Type GetTargetType()
     {
         switch (type) {
@@ -1517,6 +1565,9 @@ public class Accessor {
                 return typeof(object);
 
             case AccessorType.Method:
+                return typeof(object);
+
+            case AccessorType.Global:
                 return typeof(object);
 
         }

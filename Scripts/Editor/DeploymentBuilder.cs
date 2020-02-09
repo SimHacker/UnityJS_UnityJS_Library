@@ -282,13 +282,21 @@ public class DeploymentBuilder : MonoBehaviour {
         if (build) {
 
             BuildOptions buildOptions = Bridge.ToEnumMask<BuildOptions>(config["buildOptions"]);
-            //Debug.Log("DeploymentBuilder: ConfigureDeployment: buildOptions: " + buildOptions);
+            Debug.Log("DeploymentBuilder: ConfigureDeployment: buildOptions: " + buildOptions);
 
             string buildLocation = (string)config["buildLocation"];
-            //Debug.Log("DeploymentBuilder: ConfigureDeployment: buildLocation: " + buildLocation);
+            Debug.Log("DeploymentBuilder: ConfigureDeployment: buildLocation: " + buildLocation);
 
             // Switch to the build target.
             //EditorUserBuildSettings.SwitchActiveBuildTarget(buildTargetGroup, buildTarget);
+
+            // Delete Emacs turds.
+            foreach (string pattern in new string[] { "*~", "#*", }) {
+                foreach (string fileName in Directory.EnumerateFiles(".", pattern, SearchOption.AllDirectories)) {
+                    Debug.Log("DeploymentBuilder: ConfigureDeployment: deleting file: " + fileName);
+                    File.Delete(fileName);
+                }
+            }
 
             BuildReport buildReport =
                 BuildPipeline.BuildPlayer(

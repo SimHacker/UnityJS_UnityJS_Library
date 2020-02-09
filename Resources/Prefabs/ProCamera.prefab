@@ -118,7 +118,7 @@ Camera:
     width: 1
     height: 1
   near clip plane: 0.3
-  far clip plane: 10000
+  far clip plane: 1000
   field of view: 60
   orthographic: 0
   orthographic size: 5
@@ -197,6 +197,7 @@ MonoBehaviour:
   initialEulers: {x: 0, y: 0, z: 0}
   zoomDeltaRotated: {x: 0, y: 0, z: 0}
   orbitLocation: {x: 0, y: 0, z: 0}
+  gotInput: 0
   dragging: 0
   wasDragging: 0
   tracking: 0
@@ -210,6 +211,10 @@ MonoBehaviour:
   dragScreenDistance: {x: 0, y: 0, z: 0}
   dragDistance: 0
   dragPosition: {x: 0, y: 0, z: 0}
+  orthographicSizeMin: 1
+  orthographicSizeMax: 1000
+  orthographicSizeMouseScale: 1
+  orthographicSizeWheelScale: 1
   fieldOfViewMax: 120
   fieldOfViewMin: 1
   fieldOfViewScale: -0.2
@@ -232,6 +237,41 @@ MonoBehaviour:
   interpolateColumns: 0
   interpolatePositions: []
   interpolateRotations: []
+  animating: 0
+  animationStart: 0
+  animationCancelsDragging: 0
+  animationCanceledByDragging: 0
+  animationCancel: 0
+  animationDuration: 0.5
+  animationDurationMin: 0.1
+  animationStartTime: -100
+  animationStartPosition: {x: 0, y: 0, z: 0}
+  animationEndPosition: {x: 0, y: 0, z: 0}
+  animationPosition: {x: 0, y: 0, z: 0}
+  animationStartRotation: {x: 0, y: 0, z: 0, w: 0}
+  animationEndRotation: {x: 0, y: 0, z: 0, w: 0}
+  animationRotation: {x: 0, y: 0, z: 0, w: 0}
+  animationStartOrthographicSize: 0
+  animationEndOrthographicSize: 0
+  animationOrthographicSize: 0
+  animationStartNearClipPlane: 0
+  animationEndNearClipPlane: 0
+  animationNearClipPlane: 0
+  animationStartFarClipPlane: 0
+  animationEndFarClipPlane: 0
+  animationFarClipPlane: 0
+  target: {fileID: 0}
+  targetSnap: 0
+  targetSnapAlways: 0
+  targetSnapPadding: 10
+  targetSnapDepthPadding: 10
+  minClipDepth: 0.01
+  targetAnimate: 0
+  targetDistance: 5000
+  targetSizeMin: 1
+  targetSizeScale: 1.1
+  targetOrientation: {x: 30, y: 0, z: 0}
+  targetAnimationDuration: 0.5
 --- !u!114 &-6798878107263553993
 MonoBehaviour:
   m_ObjectHideFlags: 0
