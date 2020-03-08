@@ -3,6 +3,12 @@
 // Copyright (C) 2018 by Don Hopkins, Ground Up Software.
 
 
+#if USE_LEANTWEEN
+
+
+////////////////////////////////////////////////////////////////////////
+
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -725,3 +731,9 @@ public class LeanTweenBridge : BridgeObject {
 
 
 }
+
+
+////////////////////////////////////////////////////////////////////////
+
+
+#endif

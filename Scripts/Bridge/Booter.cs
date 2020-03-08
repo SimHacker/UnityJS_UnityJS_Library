@@ -106,9 +106,14 @@ public class Booter: MonoBehaviour {
     public TMP_InputField stringInputField;
     public Toggle booleanToggle;
     public TextMeshProUGUI booleanToggleLabel;
-    //public TMP_InputField scriptInputField;
-    public WebGLAce_TMP_InputField scriptInputField;
     public List<GameObject> disabledObjects;
+
+    // NOTE: You will have to re-setup your Booter object if you change this flag.
+#if USE_WEBGLACE
+    public WebGLAce_TMP_InputField scriptInputField;
+#else
+    public TMP_InputField scriptInputField;
+#endif
 
     public PropertyData[] propertyDataArray = new PropertyData[] {
         new PropertyData {
@@ -432,7 +437,11 @@ public class Booter: MonoBehaviour {
         stringInputField.interactable = editable;
         booleanToggle.interactable = editable;
         scriptInputField.interactable = editable;
+
+#if USE_WEBGLACE
         scriptInputField.UpdateEditor();
+#endif
+
     }
 
 

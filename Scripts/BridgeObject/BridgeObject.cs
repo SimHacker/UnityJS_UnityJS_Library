@@ -389,7 +389,9 @@ public class BridgeObject : MonoBehaviour {
     {
         //Debug.Log("BridgeObject: AnimateData: data: " + data, this);
 
+#if USE_LEANTWEEN
         LeanTweenBridge.AnimateData(this, data);
+#endif
     }
 
  
