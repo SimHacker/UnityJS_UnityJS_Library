@@ -26,11 +26,11 @@ public class KeyboardTracker : Tracker {
 
     void Update()
     {
-        TrackKeyboard();
+        TrackKeyboardInput();
     }
 
 
-    public void TrackKeyboard()
+    public void TrackKeyboardInput()
     {
         if (tracking && inputStringTracking) {
             inputString = Input.inputString;
