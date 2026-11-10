@@ -117,7 +117,7 @@ public class UnityJSPlugin : MonoBehaviour {
 #if UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX || UNITY_IPHONE
 
     [DllImport(PLUGIN_DLL)]
-    private static extern IntPtr _CUnityJSPlugin_SetUnitySendMessageCallback(IntPtr unitySendMessageCallback);
+    private static extern void _CUnityJSPlugin_SetUnitySendMessageCallback(IntPtr unitySendMessageCallback);
 
     [DllImport(PLUGIN_DLL)]
     private static extern IntPtr _CUnityJSPlugin_Init(bool transparent);
